@@ -7,6 +7,7 @@ Plataforma para alunos de TI da FAESA acharem parceiros de projeto (mural de ide
 - `docs/PRD.md` — escopo do MVP, modelo de dados, regras de negócio e o que está fora de escopo. É a fonte da verdade do produto.
 - `docs/IDEIA.md` — visão, fila de fases futuras e a régua de decisão.
 - `docs/contratos/` — contratos de API por fatia. Front e back codam contra o contrato; se precisar mudar, mude o contrato primeiro e avise.
+- `docs/DESIGN.md` — regras de interface (visual, padrões de tela, texto e acessibilidade). Obrigatório em qualquer mudança de tela, componente ou texto da interface.
 
 Na dúvida sobre escopo, aplique a régua: "sem isso, a dor principal continua sem solução?". Se não, não entra — anote como sugestão e siga.
 
