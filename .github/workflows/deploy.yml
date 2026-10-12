@@ -1,0 +1,93 @@
+# Checagens em todo PR e, na main, deploy na VPS depois que elas passam.
+# O repositório é público: os logs também são. Nada aqui imprime segredo, e o .env de produção nunca passa pelo GitHub.
+name: CI e deploy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    # commit só de documentação não precisa reconstruir a produção
+    paths-ignore: ["docs/**", "**.md"]
+  # botão "Run workflow" na aba Actions, para refazer o deploy sem commit novo (ex.: depois de trocar o .env)
+  workflow_dispatch:
+
+# o token do GitHub só lê o código; nenhum job escreve no repositório
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-24.04
+    services:
+      # banco descartável, só existe durante o job
+      db:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: comunica
+          POSTGRES_PASSWORD: comunica
+          POSTGRES_DB: comunica_test
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U comunica" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://comunica:comunica@localhost:5432/comunica_test?sslmode=disable
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - run: go run github.com/pressly/goose/v3/cmd/goose@v3.28.0 -dir db/migrations postgres "$TEST_DATABASE_URL" up
+      - run: go vet ./...
+      - run: go test ./...
+
+  web:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm run build
+
+  deploy:
+    needs: [api, web]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    # os secrets moram no environment production, que só libera para a main: workflow de PR nunca os enxerga
+    environment: production
+    # dois merges seguidos entram em fila, nunca dois deploys ao mesmo tempo
+    concurrency: production
+    steps:
+      # A chave só roda o deploy.sh (command= no authorized_keys); known_hosts fixo para não aceitar um servidor falso.
+      # Segredos entram por env e variável entre aspas, nunca por ${{ }} dentro do script.
+      - name: Roda o deploy na VPS
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          install -m 600 /dev/null ~/.ssh/deploy
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy
+          ssh -i ~/.ssh/deploy -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 "deploy@$HOST"
+      - name: Confere se o site e a API respondem
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null https://comunica.5-183-8-106.sslip.io/
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null https://comunica.5-183-8-106.sslip.io/api/ideas
