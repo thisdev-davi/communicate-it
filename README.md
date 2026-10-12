@@ -12,7 +12,7 @@ A conversa dos grupos acontece no Discord da comunidade; a plataforma não tem c
 Em desenvolvimento, construído em fatias verticais (tela → API → banco).
 
 - [x] Fatia 1, back: postar e listar ideias (`POST` / `GET /api/ideas`)
-- [x] Fatia 1, front: tela provisória do mural e formulário (a identidade visual vem depois)
+- [x] Fatia 1, front: mural e formulário de postar ideia
 - [x] Fatia 2: login com Discord (só membros do servidor da comunidade)
 - [x] Fatia 3: escolha de curso no primeiro login e prévia do mural para visitante
 - [x] Fatia 4: página da ideia (`GET /api/ideas/{id}`), aberta pelo card do mural
@@ -128,6 +128,7 @@ docs/
   PRD.md             escopo do MVP e regras de negócio
   IDEIA.md           visão e fases futuras
   contratos/         contrato de API de cada fatia
+  DESIGN.md          regras de interface: visual, telas, texto e acessibilidade
 ```
 
 ## Como o projeto é tocado
