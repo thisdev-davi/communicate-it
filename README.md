@@ -69,7 +69,7 @@ Em https://comunica.5-183-8-106.sslip.io. A VPS é dividida com outros projetos:
 Primeira vez:
 
 1. No Discord Developer Portal, adicione o redirect `https://comunica.5-183-8-106.sslip.io/api/auth/discord/callback` (o de localhost continua).
-2. Na VPS (`ssh root@5.183.8.106`):
+2. Na VPS, como root:
 
    ```sh
    git clone https://github.com/thisdev-davi/comunica-faesa.git /opt/comunica-faesa
@@ -104,12 +104,27 @@ Primeira vez:
 
    E recarregue: `cd /opt/proxy && docker compose exec caddy caddy reload -c /etc/caddy/Caddyfile`.
 
-Atualizar depois de um merge na `main`:
+### Deploy automático
+
+Todo push na `main` (menos os só de `docs/` e `.md`) roda o workflow `.github/workflows/deploy.yml`: testes da API e checagens do front e, se passarem, o `deploy.sh` na VPS. O mesmo workflow roda as checagens em todo PR. Para refazer o deploy sem commit novo (ex.: depois de trocar o `.env`): aba **Actions** → **CI e deploy** → **Run workflow**, ou `gh workflow run deploy.yml`.
+
+O GitHub entra na VPS como o usuário `deploy`, nunca como root, com uma chave que só serve para isso: o `authorized_keys` força o comando, então quem tiver a chave não abre shell nem faz túnel, só roda o deploy. Os segredos ficam no environment `production` do GitHub, liberado só para a `main`:
+
+- `DEPLOY_SSH_KEY`: chave privada (gerada só para isso, nunca a de outro projeto)
+- `DEPLOY_KNOWN_HOSTS`: a linha `<host> ssh-ed25519 ...` da chave do servidor, para não aceitar um servidor falso
+- `DEPLOY_HOST`: endereço da VPS
+
+Configuração na VPS (uma vez, como root):
 
 ```sh
-cd /opt/comunica-faesa && git pull && docker compose -f compose.prod.yaml up -d --build
-docker compose -f compose.prod.yaml logs --tail 50 comunica-api   # se algo não subir
+useradd -m -s /bin/sh -G docker deploy        # o grupo docker vale root na prática: o command= abaixo é o que limita a chave
+chown -R deploy:deploy /opt/comunica-faesa    # o .env continua 600, agora do deploy
+install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
+echo 'restrict,command="cd /opt/comunica-faesa && git pull --ff-only -q && exec sh deploy.sh" <chave pública>' > /home/deploy/.ssh/authorized_keys
+chown deploy:deploy /home/deploy/.ssh/authorized_keys && chmod 600 /home/deploy/.ssh/authorized_keys
 ```
+
+Se o deploy falhar, o job fica vermelho na aba Actions. Se foi no build, os containers antigos continuam no ar. Logs: `docker compose -f compose.prod.yaml logs --tail 50 comunica-api`.
 
 O seed nunca roda na VPS: lá só entram dados reais, criados pelo próprio site.
 

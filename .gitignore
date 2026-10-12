@@ -11,3 +11,6 @@ node_modules/
 /backend/bin/
 *.test
 *.out
+
+# ferramentas locais
+.claude/
