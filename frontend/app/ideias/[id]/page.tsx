@@ -1,32 +1,28 @@
-import { cookies } from "next/headers";
-import { notFound, redirect, unstable_rethrow } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Avatar } from "../../components/Avatar";
 import { IdeaCard } from "../../components/IdeaCard";
 import { InterestButton } from "../../components/InterestButton";
 import { StatePanel } from "../../components/StatePanel";
-import { API_URL, type Idea, type Interest } from "../../ideas";
+import { type Idea, type Interest } from "../../ideas";
 import { getMe } from "../../me";
+import { AuthorPanel } from "./author-panel";
 import { CallOnDiscord } from "./call-on-discord";
+import { getIdea } from "./get-idea";
 import styles from "./ideia.module.css";
 
 // Contrato da fatia 4 (docs/contratos/fatia-4-pagina-da-ideia.md): só para quem está logado e já tem curso.
-// Roda no servidor e chama o Go direto, repassando o cookie do navegador (sem ele a API responde 401).
+// Roda no servidor e chama o Go direto (getIdea), repassando o cookie do navegador.
 async function IdeaDetail({ params }: { params: PageProps<"/ideias/[id]">["params"] }) {
   const me = await getMe();
   if (!me) redirect("/login");
   if (!me.course) redirect("/cadastro");
 
   const { id } = await params;
-  const cookie = (await cookies()).toString();
   let idea: Idea;
   try {
-    const res = await fetch(`${API_URL}/api/ideas/${encodeURIComponent(id)}`, { headers: { cookie } });
-    if (res.status === 404) notFound(); // também para id inválido (abc, 0): a API responde 404
-    if (res.status === 401) redirect("/login"); // a sessão expirou entre o getMe e aqui
-    if (!res.ok) throw new Error(`status ${res.status}`);
-    idea = await res.json();
+    idea = await getIdea(id);
   } catch (err) {
     unstable_rethrow(err); // deixa passar o notFound, o redirect e os erros internos do Next
     console.error("buscar ideia:", err);
@@ -45,6 +41,7 @@ async function IdeaDetail({ params }: { params: PageProps<"/ideias/[id]">["param
         action={me.id !== idea.author.id && <InterestButton ideaId={idea.id} interested={idea.interested} />}
       />
       {idea.interested && <p className={styles.hint}>Você está na lista. O autor vai te chamar no Discord.</p>}
+      {me.id === idea.author.id && <AuthorPanel ideaId={idea.id} />}
       {idea.interests && <Interested people={idea.interests} ideaTitle={idea.title} />}
     </>
   );
@@ -53,7 +50,7 @@ async function IdeaDetail({ params }: { params: PageProps<"/ideias/[id]">["param
 // Só o autor recebe a lista da API (fatia 5): quem marcou "Quero participar", em ordem de chegada.
 function Interested({ people, ideaTitle }: { people: Interest[]; ideaTitle: string }) {
   return (
-    <section className={`card ${styles.people}`} aria-labelledby="interessados">
+    <section className={`card ${styles.panel}`} aria-labelledby="interessados">
       <h2 id="interessados" className={styles.section}>
         Interessados ({people.length})
       </h2>

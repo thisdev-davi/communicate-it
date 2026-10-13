@@ -4,7 +4,7 @@ import { Icon, type IconName } from "./Icon";
 import styles from "./Button.module.css";
 
 type Look = {
-  variant?: "primary" | "accent" | "secondary" | "ghost";
+  variant?: "primary" | "accent" | "secondary" | "ghost" | "danger";
   size?: "md" | "sm";
   icon?: IconName;
   className?: string;

@@ -20,7 +20,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - **`accent`:** o laranja escurecido, reservado para o convite a participar. É no máximo um por tela ou card, e nunca dois laranjas lado a lado. O texto sobre ele é `on-accent`, nunca branco fixo. A versão `accent-soft` é o fundo de selo de destaque ("Você participa"), e a borda `accent` marca o card de quem participa.
 - **`faesa-orange` e `faesa-amber`:** cores puras da instituição, só para grafismo (o losango, o logo). Não servem para texto nem para fundo de botão: com texto branco ficam abaixo de 4.5:1.
 - **Status da ideia:** `status-open`, `status-progress` e `status-done`, cada um sobre o seu `-soft`, sempre com a palavra junto. A cor nunca carrega a informação sozinha.
-- **Erro:** `danger` sobre `danger-soft`.
+- **Erro:** `danger` sobre `danger-soft`. O mesmo par pinta o botão `danger`, só para ação que destrói ("Apagar ideia").
 - **Bordas:** `line` em divisórias e cards; `line-strong` em controles (campo, botão secundário) e no hover de card clicável.
 
 ### Tema claro e escuro
@@ -38,7 +38,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 | título de página | 32px / 800 (28px no celular) | `.display` do mural |
 | título da ideia | 24px / 700 | `IdeaCard` com `full` |
 | título de página em card | 24px / 700 | "Postar ideia" |
-| título de seção | 18px / 700 | "Interessados", login, cadastro |
+| título de seção | 18px / 700 | "Sua ideia", "Interessados", login, cadastro |
 | título no card | 17px / 700 | `IdeaCard` |
 | texto corrido | 15px / 400 | descrição na página da ideia, parágrafos |
 | resumo e metadados | 13px (12px na linha de ícones do card) | descrição no card, rodapés |
@@ -86,7 +86,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - **Coluna da página:** conteúdo com no máximo 1040px, centralizado, com recuo lateral `space-6` (`space-4` no celular). Páginas de leitura e formulário (ideia, postar) usam a coluna mais estreita, de 760px.
 - **Cabeçalho:** a barra vai de ponta a ponta, mas o conteúdo dela (`.bar`) segue a coluna de 1040px. Logo, título da página e primeiro card começam na mesma linha vertical, e a última ação termina junto com a última coluna da grade.
 - **Topo do mural:** título e texto de apoio à esquerda; a ação da página ("Postar ideia") à direita, alinhada pela base. No celular, a ação desce.
-- **Voltar:** páginas internas começam com o link "Voltar ao mural".
+- **Voltar:** páginas internas começam com o link "Voltar ao mural". A página de editar volta para a ideia ("Voltar à ideia").
 
 ### Cards do mural
 
@@ -111,9 +111,11 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   - o card inteiro (`full`), sem cortes;
   - quem não é autor vê o "Quero participar", que vira "Interessado" (`aria-pressed`);
   - o interessado lê "Você está na lista. O autor vai te chamar no Discord.";
-  - o autor vê a seção "Interessados (N)" com "Chamar no Discord", que abre o perfil e copia a primeira mensagem;
+  - o autor vê o painel "Sua ideia", com "Editar ideia" (`secondary`) e "Apagar ideia" (`danger`), e embaixo a seção "Interessados (N)" com "Chamar no Discord", que abre o perfil e copia a primeira mensagem;
+  - "Apagar ideia" confirma na caixa nativa do navegador (`confirm()`), que já é acessível, e depois volta ao mural;
   - ideia inexistente mostra "Ideia não encontrada".
 - **Postar (`/ideias/nova`):** só para quem está logado e tem curso. Depois do envio, vai para a página da ideia nova.
+- **Editar (`/ideias/<id>/editar`):** o mesmo formulário do postar, já preenchido, com "Editar ideia" e "Salvar alterações". Só o autor; quem não é o autor vai para a página da ideia. Depois de salvar, volta para a ideia.
 - **A conversa acontece no Discord.** A interface aponta para lá (perfil, convite do servidor) e não constrói chat.
 
 ### Estados
@@ -124,7 +126,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - **Vazio:** `StatePanel` com título e uma frase que convida a agir ("Nenhuma ideia ainda. Que tal postar a primeira?").
 - **Erro de carregamento:** `StatePanel tone="error"`, que diz o que fazer ("Atualize a página em alguns instantes") e nunca mostra detalhe técnico.
 - **Erro de ação:** a mensagem fica perto do que falhou (`Notice` no topo do formulário, texto embaixo do botão) e diz o que fazer.
-- **Ação em andamento:** o controle fica desabilitado e o texto muda ("Enviando…"). Depois de gravar, o front pede a página de novo ao servidor (`router.refresh()` ou navegação), em vez de inventar o estado no cliente.
+- **Ação em andamento:** o controle fica desabilitado e o texto muda ("Enviando…", "Salvando…", "Apagando…"). Depois de gravar, o front pede a página de novo ao servidor (`router.refresh()` ou navegação), em vez de inventar o estado no cliente.
 
 ### Formulários
 

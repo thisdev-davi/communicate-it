@@ -75,6 +75,17 @@
   background: var(--primary-soft);
 }
 
+/* Ação que destrói ("Apagar ideia"): o par danger sobre danger-soft do design system. */
+.danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.danger:hover {
+  background: var(--surface-raised);
+}
+
 /* Depois dos :hover, para ganhar deles com a mesma especificidade. */
 .btn:disabled {
   cursor: not-allowed;

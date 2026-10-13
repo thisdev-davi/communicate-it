@@ -39,7 +39,8 @@ func NewHandler(db DBTX, userID func(*http.Request) (int64, error)) *Handler {
 	return &Handler{q: New(db), userID: userID}
 }
 
-type createRequest struct {
+// Corpo do POST e do PUT: postar e editar trocam os mesmos campos.
+type ideaRequest struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Course      string `json:"course"`
@@ -90,22 +91,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req createRequest
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes)).Decode(&req); err != nil {
-		var tooBig *http.MaxBytesError
-		if errors.As(err, &tooBig) {
-			writeJSON(w, http.StatusRequestEntityTooLarge, errorResponse{Error: "body_too_large"})
-			return
-		}
-		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid_json"})
+	req, ok := decodeIdea(w, r)
+	if !ok {
 		return
 	}
-
-	if fields := req.validate(); len(fields) > 0 {
-		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "validation_failed", Fields: fields})
-		return
-	}
-
 	row, err := h.q.CreateIdea(r.Context(), CreateIdeaParams{
 		AuthorID:    authorID,
 		Title:       req.Title,
@@ -119,6 +108,48 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, toResponse(ListIdeasRow(row)))
+}
+
+// Update troca os campos da ideia (os mesmos do postar). Só o autor; status, autor e data não mudam por aqui.
+func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
+	id, ok := h.authorOf(w, r)
+	if !ok {
+		return
+	}
+	req, ok := decodeIdea(w, r)
+	if !ok {
+		return
+	}
+	row, err := h.q.UpdateIdea(r.Context(), UpdateIdeaParams{
+		ID:          id,
+		Title:       req.Title,
+		Description: req.Description,
+		Course:      req.Course,
+		Category:    req.Category,
+		Slots:       int32(req.Slots), // seguro: validate garante 1–20
+	})
+	if errors.Is(err, pgx.ErrNoRows) { // apagada entre o authorOf e aqui
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
+		return
+	}
+	if err != nil {
+		internalError(w, "update idea", err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toResponse(ListIdeasRow(row)))
+}
+
+// Delete apaga a ideia de vez, e os interessados vão junto (ON DELETE CASCADE). Só o autor.
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
+	id, ok := h.authorOf(w, r)
+	if !ok {
+		return
+	}
+	if err := h.q.DeleteIdea(r.Context(), id); err != nil {
+		internalError(w, "delete idea", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // List devolve o mural: tudo para quem está logado, só as mais recentes para visitante.
@@ -240,14 +271,60 @@ func (h *Handler) loggedIn(w http.ResponseWriter, r *http.Request) (userID int64
 	return userID, true
 }
 
+// authorOf devolve o id da ideia da rota quando quem chama é o autor dela. Senão já responde
+// 401 (sem sessão), 404 (ideia não existe) ou 403 (não é o autor) e devolve ok = false.
+func (h *Handler) authorOf(w http.ResponseWriter, r *http.Request) (id int64, ok bool) {
+	userID, ok := h.loggedIn(w, r)
+	if !ok {
+		return 0, false
+	}
+	id, ok = pathID(r)
+	if !ok {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
+		return 0, false
+	}
+	authorID, err := h.q.GetIdeaAuthor(r.Context(), id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
+		return 0, false
+	}
+	if err != nil {
+		internalError(w, "get idea author", err)
+		return 0, false
+	}
+	if authorID != userID {
+		writeJSON(w, http.StatusForbidden, errorResponse{Error: "not_author"})
+		return 0, false
+	}
+	return id, true
+}
+
 // pathID lê o {id} da rota. Id que não é inteiro positivo é só uma ideia que não existe: quem chama responde 404 sem ir ao banco.
 func pathID(r *http.Request) (int64, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	return id, err == nil && id > 0
 }
 
+// decodeIdea lê e valida o corpo do POST e do PUT. Com erro, já responde 400 ou 413 e devolve ok = false.
+func decodeIdea(w http.ResponseWriter, r *http.Request) (req ideaRequest, ok bool) {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes)).Decode(&req); err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			writeJSON(w, http.StatusRequestEntityTooLarge, errorResponse{Error: "body_too_large"})
+			return req, false
+		}
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid_json"})
+		return req, false
+	}
+	if fields := req.validate(); len(fields) > 0 {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "validation_failed", Fields: fields})
+		return req, false
+	}
+	return req, true
+}
+
 // validate limpa os campos de texto (trim) e devolve os erros por campo; vazio = válido.
-func (req *createRequest) validate() map[string]string {
+func (req *ideaRequest) validate() map[string]string {
 	req.Title = strings.TrimSpace(req.Title)
 	req.Description = strings.TrimSpace(req.Description)
 	req.Course = strings.TrimSpace(req.Course)

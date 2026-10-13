@@ -5,6 +5,8 @@ Objetivo único: o aluno logado abre uma ideia do mural e vê todos os detalhes 
 Mudou o contrato? Atualiza este arquivo **antes** do código.
 
 > **Atualizado pela [fatia 5](fatia-5-quero-participar.md):** a resposta ganha `interest_count`, `interested` e, só para o autor, `interests`.
+>
+> **Atualizado pela [fatia 6](fatia-6-editar-e-apagar.md):** o autor ganha o painel "Sua ideia" na página, com editar e apagar.
 
 ## Fora desta fatia (de propósito)
 
