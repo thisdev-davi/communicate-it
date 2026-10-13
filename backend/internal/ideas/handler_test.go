@@ -132,7 +132,7 @@ func TestGetRejectsVisitorAndBadID(t *testing.T) {
 }
 
 func TestValidateCountsCharactersNotBytes(t *testing.T) {
-	req := createRequest{
+	req := ideaRequest{
 		Title:       strings.Repeat("ã", 120), // 120 caracteres, 240 bytes: len() reprovaria
 		Description: "x",
 		Course:      "cc",
