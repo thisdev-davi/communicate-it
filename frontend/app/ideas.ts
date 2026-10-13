@@ -12,7 +12,7 @@ export type Idea = {
   category: string;
   slots: number;
   status: string;
-  author: { id: number; name: string };
+  author: { id: number; name: string; avatar_url: string | null };
   created_at: string;
   interest_count: number; // fatia 5 (docs/contratos/fatia-5-quero-participar.md)
   interested: boolean; // quem pede está na lista

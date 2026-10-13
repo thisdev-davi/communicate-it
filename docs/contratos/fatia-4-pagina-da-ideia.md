@@ -31,7 +31,7 @@ Resposta `200 OK`, o mesmo objeto de um item do `GET /api/ideas` ([fatia 1](fati
   "category": "mobile",
   "slots": 3,
   "status": "open",
-  "author": { "id": 1, "name": "Usuário de Teste" },
+  "author": { "id": 1, "name": "Usuário de Teste", "avatar_url": null },
   "created_at": "2026-10-08T23:40:00Z"
 }
 ```

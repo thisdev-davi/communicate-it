@@ -34,7 +34,7 @@ WITH i AS (
     RETURNING id, author_id, title, description, course, category, slots, status, created_at
 )
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
-       u.id AS author_id, u.name AS author_name,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        0::bigint AS interest_count, false AS interested
 FROM i
 JOIN users u ON u.id = i.author_id
@@ -50,18 +50,19 @@ type CreateIdeaParams struct {
 }
 
 type CreateIdeaRow struct {
-	ID            int64
-	Title         string
-	Description   string
-	Course        string
-	Category      string
-	Slots         int32
-	Status        string
-	CreatedAt     time.Time
-	AuthorID      int64
-	AuthorName    string
-	InterestCount int64
-	Interested    bool
+	ID              int64
+	Title           string
+	Description     string
+	Course          string
+	Category        string
+	Slots           int32
+	Status          string
+	CreatedAt       time.Time
+	AuthorID        int64
+	AuthorName      string
+	AuthorAvatarUrl *string
+	InterestCount   int64
+	Interested      bool
 }
 
 // Create, List e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
@@ -88,6 +89,7 @@ func (q *Queries) CreateIdea(ctx context.Context, arg CreateIdeaParams) (CreateI
 		&i.CreatedAt,
 		&i.AuthorID,
 		&i.AuthorName,
+		&i.AuthorAvatarUrl,
 		&i.InterestCount,
 		&i.Interested,
 	)
@@ -96,7 +98,7 @@ func (q *Queries) CreateIdea(ctx context.Context, arg CreateIdeaParams) (CreateI
 
 const getIdea = `-- name: GetIdea :one
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
-       u.id AS author_id, u.name AS author_name,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested
 FROM ideas i
@@ -110,18 +112,19 @@ type GetIdeaParams struct {
 }
 
 type GetIdeaRow struct {
-	ID            int64
-	Title         string
-	Description   string
-	Course        string
-	Category      string
-	Slots         int32
-	Status        string
-	CreatedAt     time.Time
-	AuthorID      int64
-	AuthorName    string
-	InterestCount int64
-	Interested    bool
+	ID              int64
+	Title           string
+	Description     string
+	Course          string
+	Category        string
+	Slots           int32
+	Status          string
+	CreatedAt       time.Time
+	AuthorID        int64
+	AuthorName      string
+	AuthorAvatarUrl *string
+	InterestCount   int64
+	Interested      bool
 }
 
 func (q *Queries) GetIdea(ctx context.Context, arg GetIdeaParams) (GetIdeaRow, error) {
@@ -138,6 +141,7 @@ func (q *Queries) GetIdea(ctx context.Context, arg GetIdeaParams) (GetIdeaRow, e
 		&i.CreatedAt,
 		&i.AuthorID,
 		&i.AuthorName,
+		&i.AuthorAvatarUrl,
 		&i.InterestCount,
 		&i.Interested,
 	)
@@ -157,7 +161,7 @@ func (q *Queries) GetIdeaAuthor(ctx context.Context, id int64) (int64, error) {
 
 const listIdeas = `-- name: ListIdeas :many
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
-       u.id AS author_id, u.name AS author_name,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested
 FROM ideas i
@@ -172,18 +176,19 @@ type ListIdeasParams struct {
 }
 
 type ListIdeasRow struct {
-	ID            int64
-	Title         string
-	Description   string
-	Course        string
-	Category      string
-	Slots         int32
-	Status        string
-	CreatedAt     time.Time
-	AuthorID      int64
-	AuthorName    string
-	InterestCount int64
-	Interested    bool
+	ID              int64
+	Title           string
+	Description     string
+	Course          string
+	Category        string
+	Slots           int32
+	Status          string
+	CreatedAt       time.Time
+	AuthorID        int64
+	AuthorName      string
+	AuthorAvatarUrl *string
+	InterestCount   int64
+	Interested      bool
 }
 
 // max NULL = sem limite (LIMIT NULL é o mesmo que não ter LIMIT); o visitante recebe só uma prévia.
@@ -207,6 +212,7 @@ func (q *Queries) ListIdeas(ctx context.Context, arg ListIdeasParams) ([]ListIde
 			&i.CreatedAt,
 			&i.AuthorID,
 			&i.AuthorName,
+			&i.AuthorAvatarUrl,
 			&i.InterestCount,
 			&i.Interested,
 		); err != nil {
