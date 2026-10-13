@@ -15,6 +15,8 @@ FROM i
 JOIN users u ON u.id = i.author_id;
 
 -- name: ListIdeas :many
+-- done escolhe a lista: false é o mural (abertas e em andamento), true é a vitrine (concluídas).
+-- A vitrine ordena pela conclusão; no mural done_at é sempre NULL, e a ordem cai na data de postagem.
 -- max NULL = sem limite (LIMIT NULL é o mesmo que não ter LIMIT); o visitante recebe só uma prévia.
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
@@ -22,7 +24,8 @@ SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested
 FROM ideas i
 JOIN users u ON u.id = i.author_id
-ORDER BY i.created_at DESC, i.id DESC
+WHERE (i.status = 'done') = sqlc.arg('done')::bool
+ORDER BY i.done_at DESC NULLS LAST, i.created_at DESC, i.id DESC
 LIMIT sqlc.narg('max');
 
 -- name: GetIdea :one
