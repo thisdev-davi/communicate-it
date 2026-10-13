@@ -107,10 +107,12 @@ Resposta `201 Created`:
   "category": "mobile",
   "slots": 3,
   "status": "open",
-  "author": { "id": 1, "name": "Usuário de Teste" },
+  "author": { "id": 1, "name": "Usuário de Teste", "avatar_url": null },
   "created_at": "2026-10-08T23:40:00Z"
 }
 ```
+
+`author.avatar_url` é a foto do Discord do autor; `null` se ele não tem foto.
 
 Erros:
 
@@ -143,7 +145,7 @@ Resposta `200 OK`, mais recentes primeiro. Visitante (sem sessão) recebe no má
       "category": "mobile",
       "slots": 3,
       "status": "open",
-      "author": { "id": 1, "name": "Usuário de Teste" },
+      "author": { "id": 1, "name": "Usuário de Teste", "avatar_url": null },
       "created_at": "2026-10-08T23:40:00Z"
     }
   ]
