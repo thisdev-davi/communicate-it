@@ -48,8 +48,9 @@ type createRequest struct {
 }
 
 type authorResponse struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
+	ID        int64   `json:"id"`
+	Name      string  `json:"name"`
+	AvatarURL *string `json:"avatar_url"`
 }
 
 type ideaResponse struct {
@@ -294,7 +295,7 @@ func toResponse(r ListIdeasRow) ideaResponse {
 		Category:      r.Category,
 		Slots:         r.Slots,
 		Status:        r.Status,
-		Author:        authorResponse{ID: r.AuthorID, Name: r.AuthorName},
+		Author:        authorResponse{ID: r.AuthorID, Name: r.AuthorName, AvatarURL: r.AuthorAvatarUrl},
 		CreatedAt:     r.CreatedAt.UTC(),
 		InterestCount: r.InterestCount,
 		Interested:    r.Interested,
