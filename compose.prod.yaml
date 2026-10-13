@@ -1,7 +1,9 @@
-# Produção na VPS (/opt/comunica-faesa): banco, API e front isolados neste projeto, sem porta aberta no host.
+# Produção na VPS: banco, API e front isolados neste projeto, sem porta aberta no host.
+# Este arquivo é só a referência versionada. O que vale é a cópia em /opt/comunica-faesa (do root, copiada à mão,
+# ver README "Deploy na VPS"), ao lado de app/, o clone do repositório. Por isso os builds partem de app/.
 # O HTTPS vem do Caddy compartilhado em /opt/proxy, que alcança comunica-web e comunica-api pela rede externa "proxy".
 # Os nomes dos serviços viram nomes na rede "proxy", que é de todos os projetos: por isso comunica-*, e não api/web.
-# Segredos no .env ao lado deste arquivo (ver README, "Deploy na VPS").
+# Segredos no .env ao lado deste arquivo. O nome do projeto (comunica) não muda: é ele que acha o volume do banco.
 name: comunica
 services:
   db:
@@ -25,7 +27,7 @@ services:
 
   # roda as migrations e sai; a API só sobe se ele terminar sem erro
   migrate:
-    build: { context: backend, target: migrate }
+    build: { context: app/backend, target: migrate }
     logging: *logs
     environment:
       GOOSE_DBSTRING: postgres://comunica:${POSTGRES_PASSWORD}@db:5432/comunica?sslmode=disable
@@ -34,7 +36,7 @@ services:
         condition: service_healthy
 
   comunica-api:
-    build: backend
+    build: app/backend
     restart: always
     logging: *logs
     environment:
@@ -49,7 +51,7 @@ services:
     networks: [default, proxy]
 
   comunica-web:
-    build: frontend
+    build: app/frontend
     restart: always
     logging: *logs
     environment:
