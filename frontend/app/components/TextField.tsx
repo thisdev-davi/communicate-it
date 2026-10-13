@@ -2,13 +2,14 @@ import { useId, type ComponentProps } from "react";
 import styles from "./Field.module.css";
 
 // Campo de texto com rótulo, dica e erro, como o Select. `rows` troca o <input> por <textarea>,
-// que leva só o `name`: o resto das props (type, inputMode…) é de <input>.
+// que leva só o `name` e o `defaultValue`: o resto das props (type, inputMode…) é de <input>.
 export function TextField({
   label,
   hint,
   error,
   rows,
   name,
+  defaultValue,
   ...rest
 }: { label: string; hint?: string; error?: string; rows?: number } & ComponentProps<"input">) {
   const id = useId();
@@ -16,6 +17,7 @@ export function TextField({
   const control = {
     id,
     name,
+    defaultValue,
     className: styles.control,
     "aria-invalid": error ? true : undefined,
     "aria-describedby": text ? `${id}-hint` : undefined,
