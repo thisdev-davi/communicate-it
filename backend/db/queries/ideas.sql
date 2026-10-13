@@ -9,7 +9,7 @@ WITH i AS (
     RETURNING *
 )
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
-       u.id AS author_id, u.name AS author_name,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        0::bigint AS interest_count, false AS interested
 FROM i
 JOIN users u ON u.id = i.author_id;
@@ -17,7 +17,7 @@ JOIN users u ON u.id = i.author_id;
 -- name: ListIdeas :many
 -- max NULL = sem limite (LIMIT NULL é o mesmo que não ter LIMIT); o visitante recebe só uma prévia.
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
-       u.id AS author_id, u.name AS author_name,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested
 FROM ideas i
@@ -27,7 +27,7 @@ LIMIT sqlc.narg('max');
 
 -- name: GetIdea :one
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
-       u.id AS author_id, u.name AS author_name,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested
 FROM ideas i
