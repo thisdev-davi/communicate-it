@@ -62,6 +62,7 @@ func run() error {
 	mux.HandleFunc("POST /api/auth/logout", a.Logout)
 	mux.HandleFunc("GET /api/me", a.Me)
 	mux.HandleFunc("PATCH /api/me", a.SetCourse)
+	mux.HandleFunc("GET /api/me/ideas", h.Mine)
 	mux.HandleFunc("POST /api/ideas", h.Create)
 	mux.HandleFunc("GET /api/ideas", h.List)
 	mux.HandleFunc("GET /api/ideas/{id}", h.Get)

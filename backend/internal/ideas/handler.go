@@ -210,6 +210,24 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string][]ideaResponse{"items": items})
 }
 
+// Mine devolve todas as ideias de quem está logado, em qualquer status (a página "Minhas ideias").
+func (h *Handler) Mine(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.loggedIn(w, r)
+	if !ok {
+		return
+	}
+	rows, err := h.q.ListMyIdeas(r.Context(), userID)
+	if err != nil {
+		internalError(w, "list my ideas", err)
+		return
+	}
+	items := make([]ideaResponse, 0, len(rows)) // não-nil: lista vazia vira [] no JSON, não null
+	for _, row := range rows {
+		items = append(items, toResponse(ListIdeasRow(row)))
+	}
+	writeJSON(w, http.StatusOK, map[string][]ideaResponse{"items": items})
+}
+
 // Get devolve uma ideia, só para quem está logado: o visitante fica na prévia do mural.
 // O autor recebe também a lista de interessados, com o discord_id para chamar cada um.
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
