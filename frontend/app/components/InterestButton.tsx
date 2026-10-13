@@ -21,6 +21,10 @@ export function InterestButton({ ideaId, interested }: { ideaId: number; interes
         startTransition(() => router.push("/login")); // a sessão expirou
         return;
       }
+      if (res?.status === 409) {
+        startTransition(() => router.refresh()); // a ideia travou com a página aberta: o servidor redesenha sem o botão
+        return;
+      }
       if (!res?.ok) {
         setFailed(true);
         return;

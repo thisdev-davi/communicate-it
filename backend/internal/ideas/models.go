@@ -18,6 +18,7 @@ type Idea struct {
 	Slots       int32
 	Status      string
 	CreatedAt   time.Time
+	DoneAt      *time.Time
 }
 
 type Interest struct {

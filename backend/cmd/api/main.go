@@ -93,6 +93,7 @@ func routes(a *auth.Handler, h *ideas.Handler) http.Handler {
 	mux.HandleFunc("GET /api/ideas/{id}", h.Get)
 	mux.HandleFunc("PUT /api/ideas/{id}", h.Update)
 	mux.HandleFunc("DELETE /api/ideas/{id}", h.Delete)
+	mux.HandleFunc("PUT /api/ideas/{id}/status", h.SetStatus)
 	mux.HandleFunc("PUT /api/ideas/{id}/interest", h.PutInterest)
 	mux.HandleFunc("DELETE /api/ideas/{id}/interest", h.DeleteInterest)
 	p := http.NewCrossOriginProtection()

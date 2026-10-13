@@ -107,7 +107,8 @@ func TestSessionErrorIs500(t *testing.T) {
 		}
 	}
 	for name, hf := range map[string]http.HandlerFunc{
-		"GET uma": h.Get, "PUT ideia": h.Update, "DELETE ideia": h.Delete, "PUT interesse": h.PutInterest, "DELETE interesse": h.DeleteInterest,
+		"GET uma": h.Get, "PUT ideia": h.Update, "DELETE ideia": h.Delete, "PUT status": h.SetStatus,
+		"PUT interesse": h.PutInterest, "DELETE interesse": h.DeleteInterest,
 	} {
 		if rec := doID(t, hf, http.MethodGet, "1"); rec.Code != 500 || decode[errorResponse](t, rec).Error != "internal" {
 			t.Errorf("%s: status = %d (%s), quer 500 internal", name, rec.Code, rec.Body)
@@ -153,6 +154,8 @@ func TestEditRejectsVisitorAndBadID(t *testing.T) {
 		{"DELETE visitante", visitor.Delete, "1", 401, "unauthenticated"},
 		{"PUT id inválido", logged.Update, "abc", 404, "not_found"},
 		{"DELETE id zero", logged.Delete, "0", 404, "not_found"},
+		{"PUT status visitante", visitor.SetStatus, "1", 401, "unauthenticated"},
+		{"PUT status id inválido", logged.SetStatus, "abc", 404, "not_found"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -409,6 +412,90 @@ func TestUpdateAndDelete(t *testing.T) {
 	var left int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM interests`).Scan(&left); err != nil || left != 0 {
 		t.Errorf("interessados depois do DELETE: %d (%v), quer 0", left, err)
+	}
+}
+
+// Status contra Postgres real: só o autor troca, só ideia aberta recebe interessados e done_at acompanha o done.
+func TestStatus(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+	var authorID, fanID int64
+	err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID)
+	if err == nil {
+		err = pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Ana Teste') RETURNING id`).Scan(&fanID)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	author, fan := NewHandler(pool, loggedAs(authorID)), NewHandler(pool, loggedAs(fanID))
+	rec := do(t, author.Create, http.MethodPost, validBody)
+	if rec.Code != 201 {
+		t.Fatalf("POST: %d (%s)", rec.Code, rec.Body)
+	}
+	created := decode[ideaResponse](t, rec)
+	if created.DoneAt != nil || !strings.Contains(rec.Body.String(), `"done_at":null`) {
+		t.Errorf("ideia nova com done_at: %s", rec.Body)
+	}
+	id := strconv.FormatInt(created.ID, 10)
+
+	for _, step := range []struct {
+		name       string
+		hf         http.HandlerFunc
+		id, body   string
+		wantStatus int
+		wantError  string
+	}{
+		{"outra pessoa troca", fan.SetStatus, id, `{"status":"done"}`, 403, "not_author"},
+		{"status fora da lista", author.SetStatus, id, `{"status":"closed"}`, 400, "validation_failed"},
+		{"status vazio", author.SetStatus, id, `{}`, 400, "validation_failed"},
+		{"json malformado", author.SetStatus, id, `{`, 400, "invalid_json"},
+		{"ideia que não existe", author.SetStatus, "999999", `{"status":"done"}`, 404, "not_found"},
+	} {
+		rec := doIDBody(t, step.hf, http.MethodPut, step.id, step.body)
+		if rec.Code != step.wantStatus || decode[errorResponse](t, rec).Error != step.wantError {
+			t.Errorf("%s: %d (%s), quer %d %s", step.name, rec.Code, rec.Body, step.wantStatus, step.wantError)
+		}
+	}
+
+	// setStatus troca e devolve a ideia como o GET a vê.
+	setStatus := func(status string) ideaResponse {
+		t.Helper()
+		if rec := doIDBody(t, author.SetStatus, http.MethodPut, id, `{"status":" `+status+` "}`); rec.Code != 204 {
+			t.Fatalf("PUT status %s: %d (%s)", status, rec.Code, rec.Body)
+		}
+		return decode[ideaResponse](t, doID(t, author.Get, http.MethodGet, id))
+	}
+	interest := func() int { return doID(t, fan.PutInterest, http.MethodPut, id).Code }
+
+	// Em andamento trava a lista, mas não tira quem já estava.
+	if code := interest(); code != 204 {
+		t.Fatalf("interesse em ideia aberta: %d", code)
+	}
+	if got := setStatus("in_progress"); got.Status != "in_progress" || got.DoneAt != nil || got.InterestCount != 1 {
+		t.Errorf("em andamento: %+v", got)
+	}
+	if rec := doID(t, fan.PutInterest, http.MethodPut, id); rec.Code != 409 || decode[errorResponse](t, rec).Error != "closed" {
+		t.Errorf("interesse em ideia em andamento: %d (%s), quer 409 closed", rec.Code, rec.Body)
+	}
+
+	// Concluir preenche done_at; concluir de novo mantém a data.
+	done := setStatus("done")
+	if done.Status != "done" || done.DoneAt == nil {
+		t.Fatalf("concluída: %+v", done)
+	}
+	if again := setStatus("done"); again.DoneAt == nil || !again.DoneAt.Equal(*done.DoneAt) {
+		t.Errorf("concluir de novo mudou done_at: %v, era %v", again.DoneAt, done.DoneAt)
+	}
+	if code := interest(); code != 409 {
+		t.Errorf("interesse em ideia concluída: %d, quer 409", code)
+	}
+
+	// Reabrir limpa done_at e destrava.
+	if got := setStatus("open"); got.Status != "open" || got.DoneAt != nil {
+		t.Errorf("reaberta: %+v", got)
+	}
+	if code := interest(); code != 204 {
+		t.Errorf("interesse em ideia reaberta: %d, quer 204", code)
 	}
 }
 

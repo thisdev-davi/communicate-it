@@ -1,14 +1,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CATEGORIES, COURSE_SHORT, COURSES, type Idea } from "../ideas";
+import { CATEGORIES, COURSE_SHORT, COURSES, STATUSES, type Idea } from "../ideas";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import styles from "./IdeaCard.module.css";
 
-const STATUS: Record<string, { label: string; tone: string }> = {
-  open: { label: "Aberta", tone: styles.open },
-  in_progress: { label: "Em andamento", tone: styles.progress },
-  done: { label: "Concluída", tone: styles.done },
+const TONE: Record<string, string> = {
+  open: styles.open,
+  in_progress: styles.progress,
+  done: styles.done,
 };
 
 // "postada em DD/MM", no horário de Brasília.
@@ -16,11 +16,11 @@ const dayMonth = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-di
 
 // StatusBadge do design system: recebe o status cru da API e sempre mostra a palavra junto da cor.
 function StatusBadge({ status }: { status: string }) {
-  const s = STATUS[status] ?? STATUS.open;
+  const s = status in STATUSES ? status : "open";
   return (
-    <span className={`${styles.badge} ${s.tone}`}>
+    <span className={`${styles.badge} ${TONE[s]}`}>
       <span className={styles.mark} aria-hidden="true" />
-      {s.label}
+      {STATUSES[s]}
     </span>
   );
 }
