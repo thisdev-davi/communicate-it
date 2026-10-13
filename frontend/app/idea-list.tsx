@@ -7,7 +7,8 @@ import { API_URL, type Idea } from "./ideas";
 import { getMe } from "./me";
 import styles from "./mural.module.css";
 
-// Grade de cards de uma lista da API: o mural (/api/ideas) e a vitrine (/api/ideas?status=done).
+// Grade de cards de uma lista da API: o mural (/api/ideas), a vitrine (/api/ideas?status=done)
+// e as minhas ideias (/api/me/ideas, só para logado: o 401 manda para o login).
 // Roda no servidor e chama o Go direto (sem passar pelo rewrite). Sem cache: a lista é sempre fresca.
 // Repassa o cookie do navegador: sem ele a API trata todo mundo como visitante e corta a lista em 3.
 // Logado sem curso ainda não terminou o cadastro: vai para lá antes de ver a lista.
@@ -22,7 +23,7 @@ export async function IdeaList({
   errorTitle: string;
   emptyTitle: string;
   emptyText: string;
-  invite: string; // complemento do "Entre com Discord" para o visitante, que só vê a prévia
+  invite?: string; // complemento do "Entre com Discord" para o visitante, que só vê a prévia
 }) {
   const me = await getMe();
   if (me && !me.course) redirect("/cadastro");
@@ -30,6 +31,7 @@ export async function IdeaList({
   let items: Idea[];
   try {
     const res = await fetch(`${API_URL}${path}`, { headers: { cookie } });
+    if (res.status === 401) redirect("/login");
     if (!res.ok) throw new Error(`status ${res.status}`);
     ({ items } = await res.json());
   } catch (err) {
@@ -55,7 +57,7 @@ export async function IdeaList({
           ))}
         </ul>
       )}
-      {!me && (
+      {!me && invite && (
         <p className={styles.more}>
           <Link href="/login">Entre com Discord</Link> {invite}
         </p>
