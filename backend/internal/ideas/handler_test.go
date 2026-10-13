@@ -172,7 +172,7 @@ func TestCreateListAndGet(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	var authorID int64
-	if err := pool.QueryRow(ctx, "INSERT INTO users (name) VALUES ('Autor de Teste') RETURNING id").Scan(&authorID); err != nil {
+	if err := pool.QueryRow(ctx, "INSERT INTO users (name, avatar_url) VALUES ('Autor de Teste', 'https://cdn.discordapp.com/avatars/1/a.png') RETURNING id").Scan(&authorID); err != nil {
 		t.Fatal(err)
 	}
 	h := NewHandler(pool, loggedAs(authorID))
@@ -189,6 +189,9 @@ func TestCreateListAndGet(t *testing.T) {
 	first := decode[ideaResponse](t, rec)
 	if first.Title != "App de carona" || first.Status != "open" || first.Author.Name != "Autor de Teste" || first.CreatedAt.IsZero() {
 		t.Errorf("ideia criada inesperada: %+v", first)
+	}
+	if a := first.Author.AvatarURL; a == nil || *a != "https://cdn.discordapp.com/avatars/1/a.png" {
+		t.Errorf("avatar do autor = %v", a)
 	}
 
 	if rec = do(t, h.Create, http.MethodPost, validBody); rec.Code != 201 {
