@@ -23,6 +23,7 @@ func TestRoutesBlockCrossOriginWrites(t *testing.T) {
 		{"post de outro *.sslip.io", http.MethodPost, "/api/ideas", "same-site", true},
 		{"post de outro site", http.MethodPost, "/api/ideas", "cross-site", true},
 		{"logout forçado de outro site", http.MethodPost, "/api/auth/logout", "same-site", true},
+		{"apagar ideia de outro site", http.MethodDelete, "/api/ideas/1", "cross-site", true},
 		{"post da própria página", http.MethodPost, "/api/ideas", "same-origin", false},
 		{"post sem navegador (curl)", http.MethodPost, "/api/ideas", "", false},
 		{"get de outro site passa", http.MethodGet, "/api/ideas/1", "cross-site", false},
