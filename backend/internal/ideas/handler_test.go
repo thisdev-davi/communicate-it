@@ -32,7 +32,13 @@ func do(t *testing.T, hf http.HandlerFunc, method, body string) *httptest.Respon
 // doID chama um handler de /api/ideas/{id} com o {id} preenchido, como o roteador faria.
 func doID(t *testing.T, hf http.HandlerFunc, method, id string) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(method, "/api/ideas/"+id, nil)
+	return doIDBody(t, hf, method, id, "")
+}
+
+// doIDBody é o doID com corpo, para o PUT da ideia.
+func doIDBody(t *testing.T, hf http.HandlerFunc, method, id, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(method, "/api/ideas/"+id, strings.NewReader(body))
 	req.SetPathValue("id", id)
 	rec := httptest.NewRecorder()
 	hf(rec, req)
@@ -100,7 +106,9 @@ func TestSessionErrorIs500(t *testing.T) {
 			t.Errorf("%s: status = %d (%s), quer 500 internal", method, rec.Code, rec.Body)
 		}
 	}
-	for name, hf := range map[string]http.HandlerFunc{"GET uma": h.Get, "PUT interesse": h.PutInterest, "DELETE interesse": h.DeleteInterest} {
+	for name, hf := range map[string]http.HandlerFunc{
+		"GET uma": h.Get, "PUT ideia": h.Update, "DELETE ideia": h.Delete, "PUT interesse": h.PutInterest, "DELETE interesse": h.DeleteInterest,
+	} {
 		if rec := doID(t, hf, http.MethodGet, "1"); rec.Code != 500 || decode[errorResponse](t, rec).Error != "internal" {
 			t.Errorf("%s: status = %d (%s), quer 500 internal", name, rec.Code, rec.Body)
 		}
@@ -124,6 +132,31 @@ func TestGetRejectsVisitorAndBadID(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			rec := doID(t, NewHandler(nil, loggedAs(tc.userID)).Get, http.MethodGet, tc.id)
+			if rec.Code != tc.wantStatus || decode[errorResponse](t, rec).Error != tc.wantError {
+				t.Errorf("status = %d (%s), quer %d %s", rec.Code, rec.Body, tc.wantStatus, tc.wantError)
+			}
+		})
+	}
+}
+
+// Esses casos param antes do banco, então o handler roda sem conexão (nil).
+func TestEditRejectsVisitorAndBadID(t *testing.T) {
+	visitor, logged := NewHandler(nil, loggedAs(0)), NewHandler(nil, loggedAs(1))
+	cases := []struct {
+		name       string
+		hf         http.HandlerFunc
+		id         string
+		wantStatus int
+		wantError  string
+	}{
+		{"PUT visitante", visitor.Update, "1", 401, "unauthenticated"},
+		{"DELETE visitante", visitor.Delete, "1", 401, "unauthenticated"},
+		{"PUT id inválido", logged.Update, "abc", 404, "not_found"},
+		{"DELETE id zero", logged.Delete, "0", 404, "not_found"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := doIDBody(t, tc.hf, http.MethodPut, tc.id, validBody)
 			if rec.Code != tc.wantStatus || decode[errorResponse](t, rec).Error != tc.wantError {
 				t.Errorf("status = %d (%s), quer %d %s", rec.Code, rec.Body, tc.wantStatus, tc.wantError)
 			}
@@ -301,6 +334,81 @@ func TestInterests(t *testing.T) {
 	rec = doID(t, author.Get, http.MethodGet, id)
 	if !strings.Contains(rec.Body.String(), `"interest_count":0,"interested":false,"interests":[]`) {
 		t.Errorf("depois de desistir: %s", rec.Body)
+	}
+}
+
+// Editar e apagar contra Postgres real: só o autor mexe, e apagar leva os interessados junto.
+func TestUpdateAndDelete(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+	var authorID, otherID int64
+	err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID)
+	if err == nil {
+		err = pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Outro Aluno') RETURNING id`).Scan(&otherID)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	author, other := NewHandler(pool, loggedAs(authorID)), NewHandler(pool, loggedAs(otherID))
+	rec := do(t, author.Create, http.MethodPost, validBody)
+	if rec.Code != 201 {
+		t.Fatalf("POST: %d (%s)", rec.Code, rec.Body)
+	}
+	created := decode[ideaResponse](t, rec)
+	id := strconv.FormatInt(created.ID, 10)
+	if rec := doID(t, other.PutInterest, http.MethodPut, id); rec.Code != 204 {
+		t.Fatalf("PUT interesse: %d (%s)", rec.Code, rec.Body)
+	}
+
+	const edited = `{"title":"  Carona solidária  ","description":"Agora com mapa","course":"ads","category":"web","slots":1}`
+	for _, step := range []struct {
+		name       string
+		hf         http.HandlerFunc
+		id, body   string
+		wantStatus int
+		wantError  string
+	}{
+		{"outro aluno edita", other.Update, id, edited, 403, "not_author"},
+		{"outro aluno com corpo inválido continua 403", other.Update, id, `{`, 403, "not_author"},
+		{"outro aluno apaga", other.Delete, id, "", 403, "not_author"},
+		{"autora com campo inválido", author.Update, id, `{"title":"ab","description":"x","course":"cc","category":"web","slots":1}`, 400, "validation_failed"},
+		{"autora edita ideia que não existe", author.Update, "999999", edited, 404, "not_found"},
+		{"autora apaga ideia que não existe", author.Delete, "999999", "", 404, "not_found"},
+	} {
+		rec := doIDBody(t, step.hf, http.MethodPut, step.id, step.body)
+		if rec.Code != step.wantStatus || decode[errorResponse](t, rec).Error != step.wantError {
+			t.Errorf("%s: %d (%s), quer %d %s", step.name, rec.Code, rec.Body, step.wantStatus, step.wantError)
+		}
+	}
+
+	// Editar troca os campos (com trim) e mantém id, status, autor, data e interessados.
+	rec = doIDBody(t, author.Update, http.MethodPut, id, edited)
+	if rec.Code != 200 {
+		t.Fatalf("PUT: %d (%s)", rec.Code, rec.Body)
+	}
+	if strings.Contains(rec.Body.String(), `"interests"`) {
+		t.Errorf("PUT não devolve a lista: %s", rec.Body)
+	}
+	want := created
+	want.Title, want.Description, want.Course, want.Category, want.Slots = "Carona solidária", "Agora com mapa", "ads", "web", 1
+	want.InterestCount = 1
+	if got := decode[ideaResponse](t, rec); !reflect.DeepEqual(got, want) {
+		t.Errorf("PUT devolveu %+v, quer %+v", got, want)
+	}
+	if got := decode[ideaResponse](t, doID(t, other.Get, http.MethodGet, id)); got.Title != "Carona solidária" || got.Slots != 1 {
+		t.Errorf("GET depois do PUT: %+v", got)
+	}
+
+	// Apagar responde 204; a ideia e os interessados somem.
+	if rec := doID(t, author.Delete, http.MethodDelete, id); rec.Code != 204 {
+		t.Fatalf("DELETE: %d (%s)", rec.Code, rec.Body)
+	}
+	if rec := doID(t, author.Get, http.MethodGet, id); rec.Code != 404 {
+		t.Errorf("GET depois do DELETE: %d, quer 404", rec.Code)
+	}
+	var left int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM interests`).Scan(&left); err != nil || left != 0 {
+		t.Errorf("interessados depois do DELETE: %d (%v), quer 0", left, err)
 	}
 }
 
