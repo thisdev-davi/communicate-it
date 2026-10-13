@@ -89,6 +89,10 @@ Apaga a sessão no banco e o cookie. Responde `204`, com ou sem sessão.
 
 `POST /api/ideas` sem sessão válida responde `401 { "error": "unauthenticated" }`. O autor da ideia é o usuário da sessão. `GET /api/ideas` continua público (a [fatia 3](fatia-3-cadastro.md) limita o visitante a 3 itens).
 
+### Escrita vinda de outro site (todas as rotas)
+
+Todo `POST`, `PUT`, `PATCH` e `DELETE` que o navegador marca como vindo de outra origem (cabeçalho `Sec-Fetch-Site` diferente de `same-origin`) responde `403 { "error": "cross_origin" }`, antes de olhar a sessão. Protege o cookie de sessão de ser usado por outra página: o `SameSite=Lax` sozinho não basta em `*.sslip.io`, que o navegador trata como um site só. `GET` não muda nada e continua liberado. Chamada sem navegador (curl, sem `Sec-Fetch-Site` nem `Origin`) passa.
+
 ## Variáveis de ambiente
 
 | variável | quem lê | exemplo |
