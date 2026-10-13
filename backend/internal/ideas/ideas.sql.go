@@ -186,12 +186,14 @@ SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested
 FROM ideas i
 JOIN users u ON u.id = i.author_id
-ORDER BY i.created_at DESC, i.id DESC
-LIMIT $2
+WHERE (i.status = 'done') = $2::bool
+ORDER BY i.done_at DESC NULLS LAST, i.created_at DESC, i.id DESC
+LIMIT $3
 `
 
 type ListIdeasParams struct {
 	Viewer int64
+	Done   bool
 	Max    *int32
 }
 
@@ -212,9 +214,11 @@ type ListIdeasRow struct {
 	Interested      bool
 }
 
+// done escolhe a lista: false é o mural (abertas e em andamento), true é a vitrine (concluídas).
+// A vitrine ordena pela conclusão; no mural done_at é sempre NULL, e a ordem cai na data de postagem.
 // max NULL = sem limite (LIMIT NULL é o mesmo que não ter LIMIT); o visitante recebe só uma prévia.
 func (q *Queries) ListIdeas(ctx context.Context, arg ListIdeasParams) ([]ListIdeasRow, error) {
-	rows, err := q.db.Query(ctx, listIdeas, arg.Viewer, arg.Max)
+	rows, err := q.db.Query(ctx, listIdeas, arg.Viewer, arg.Done, arg.Max)
 	if err != nil {
 		return nil, err
 	}

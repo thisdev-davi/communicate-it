@@ -74,11 +74,19 @@ export function IdeaCard({ idea, full = false, action }: { idea: Idea; full?: bo
             <Icon name="hand" size={14} />
             {idea.interest_count} {idea.interest_count === 1 ? "interessado" : "interessados"}
           </li>
-          <li>
-            <Icon name="calendar" size={14} />
-            <span className="sr-only">postada em </span>
-            <time dateTime={idea.created_at}>{dayMonth.format(new Date(idea.created_at))}</time>
-          </li>
+          {/* Concluída mostra quando terminou (é a ordem da vitrine), escrito para não confundir com a postagem. */}
+          {idea.done_at ? (
+            <li>
+              <Icon name="circle-check" size={14} />
+              concluída em <time dateTime={idea.done_at}>{dayMonth.format(new Date(idea.done_at))}</time>
+            </li>
+          ) : (
+            <li>
+              <Icon name="calendar" size={14} />
+              <span className="sr-only">postada em </span>
+              <time dateTime={idea.created_at}>{dayMonth.format(new Date(idea.created_at))}</time>
+            </li>
+          )}
         </ul>
       </footer>
     </article>

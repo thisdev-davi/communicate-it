@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { Logo } from "./components/Logo";
 import "./globals.css";
 import styles from "./header.module.css";
+import { Links, NavLinks } from "./nav-links";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
@@ -37,6 +38,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/" className={styles.brand}>
               <Logo />
             </Link>
+            <nav aria-label="Principal" className={styles.nav}>
+              <Suspense fallback={<Links />}>
+                <NavLinks />
+              </Suspense>
+            </nav>
             <ThemeToggle />
             <Suspense fallback={null}>
               <UserMenu />

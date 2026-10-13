@@ -177,18 +177,28 @@ func (h *Handler) SetStatus(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// List devolve o mural: tudo para quem está logado, só as mais recentes para visitante.
+// List devolve o mural (abertas e em andamento) ou, com ?status=done, a vitrine de concluídas.
+// Tudo para quem está logado, só as primeiras para visitante.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.userID(r)
 	if err != nil {
 		internalError(w, "session", err)
 		return
 	}
+	var done bool
+	switch r.URL.Query().Get("status") {
+	case "": // o mural; em Go o case não cai no próximo, então vazio é "não faz nada"
+	case "done":
+		done = true
+	default:
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "validation_failed", Fields: map[string]string{"status": "valor inválido"}})
+		return
+	}
 	var max *int32 // nil vira NULL no SQL: sem limite
 	if userID == 0 {
 		max = new(int32(previewSize)) // Go 1.26+: new aceita um valor e devolve o ponteiro para uma cópia dele
 	}
-	rows, err := h.q.ListIdeas(r.Context(), ListIdeasParams{Viewer: userID, Max: max})
+	rows, err := h.q.ListIdeas(r.Context(), ListIdeasParams{Viewer: userID, Done: done, Max: max})
 	if err != nil {
 		internalError(w, "list ideas", err)
 		return

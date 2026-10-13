@@ -499,6 +499,70 @@ func TestStatus(t *testing.T) {
 	}
 }
 
+// Mural e vitrine contra Postgres real: concluída sai do mural, a vitrine ordena pela conclusão e o visitante vê 3.
+func TestMuralAndShowcase(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+	var authorID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID); err != nil {
+		t.Fatal(err)
+	}
+	author, visitor := NewHandler(pool, loggedAs(authorID)), NewHandler(pool, loggedAs(0))
+	ids := make([]int64, 6) // ids[0] é a mais antiga
+	for i := range ids {
+		rec := do(t, author.Create, http.MethodPost, validBody)
+		if rec.Code != 201 {
+			t.Fatalf("POST: %d (%s)", rec.Code, rec.Body)
+		}
+		ids[i] = decode[ideaResponse](t, rec).ID
+	}
+	setStatus := func(id int64, status string) {
+		t.Helper()
+		if rec := doIDBody(t, author.SetStatus, http.MethodPut, strconv.FormatInt(id, 10), `{"status":"`+status+`"}`); rec.Code != 204 {
+			t.Fatalf("PUT status: %d (%s)", rec.Code, rec.Body)
+		}
+	}
+	// Conclui fora da ordem de postagem: a vitrine tem de seguir a conclusão, não a postagem.
+	for _, i := range []int{1, 0, 2, 3} {
+		setStatus(ids[i], "done")
+	}
+	setStatus(ids[4], "in_progress")
+
+	list := func(h *Handler, query string) []int64 {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		h.List(rec, httptest.NewRequest(http.MethodGet, "/api/ideas?"+query, nil))
+		if rec.Code != 200 {
+			t.Fatalf("GET ?%s: %d (%s)", query, rec.Code, rec.Body)
+		}
+		var got []int64
+		for _, it := range decode[struct{ Items []ideaResponse }](t, rec).Items {
+			got = append(got, it.ID)
+		}
+		return got
+	}
+	for _, tc := range []struct {
+		name string
+		h    *Handler
+		q    string
+		want []int64
+	}{
+		{"mural sem as concluídas", author, "", []int64{ids[5], ids[4]}},
+		{"vitrine pela conclusão", author, "status=done", []int64{ids[3], ids[2], ids[0], ids[1]}},
+		{"vitrine do visitante: só 3", visitor, "status=done", []int64{ids[3], ids[2], ids[0]}},
+	} {
+		if got := list(tc.h, tc.q); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s: %v, quer %v", tc.name, got, tc.want)
+		}
+	}
+
+	rec := httptest.NewRecorder()
+	author.List(rec, httptest.NewRequest(http.MethodGet, "/api/ideas?status=open", nil))
+	if got := decode[errorResponse](t, rec); rec.Code != 400 || got.Error != "validation_failed" || got.Fields["status"] == "" {
+		t.Errorf("status inválido: %d (%s), quer 400 com fields.status", rec.Code, rec.Body)
+	}
+}
+
 // testDB conecta no banco de teste com as tabelas vazias; pula o teste sem TEST_DATABASE_URL.
 func testDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()

@@ -112,7 +112,7 @@ Um aluno posta várias ideias; cada ideia reúne vários interessados; habilidad
 
 **Regras principais**
 
-- Só aluno logado (via Discord) interage; visitante pode ver a vitrine de concluídos.
+- Só aluno logado (via Discord) interage; visitante vê uma prévia do mural e da vitrine de concluídos.
 - A lista de interessados é aberta, sem aprovação — o espírito é conhecer gente nova.
 - Apenas o autor da ideia muda o status dela e trava novos interessados.
 - A coordenação real dos grupos acontece no Discord, não na plataforma.

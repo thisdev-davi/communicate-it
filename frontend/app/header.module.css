@@ -20,9 +20,45 @@
 
 .brand {
   display: inline-flex;
-  margin-right: auto; /* empurra o resto para a direita */
   border-radius: var(--radius-sm);
   text-decoration: none;
+}
+
+/* Navegação principal, colada no logo; empurra o tema e o usuário para a direita. */
+.nav {
+  margin-left: var(--space-4);
+  margin-right: auto;
+}
+
+.links {
+  display: flex;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--ink);
+  background: var(--surface-sunken);
+}
+
+/* A página atual: cor e fundo juntos (não só a cor), como o hover do botão secundário. */
+.link[aria-current="page"] {
+  color: var(--primary);
+  background: var(--primary-soft);
 }
 
 /* Botão só de ícone (tema): quadrado, do tamanho da altura do botão sm. */
@@ -34,6 +70,10 @@
 @media (pointer: coarse) {
   .iconOnly {
     width: 44px;
+  }
+
+  .link {
+    height: 44px;
   }
 }
 
@@ -67,6 +107,17 @@
 @media (max-width: 600px) {
   .bar {
     padding: var(--space-2) var(--space-4);
+  }
+
+  /* No celular, os links descem para uma segunda linha da barra, e o logo volta a empurrar o resto. */
+  .brand {
+    margin-right: auto;
+  }
+
+  .nav {
+    order: 1;
+    flex-basis: 100%;
+    margin: 0;
   }
 
   .name {
