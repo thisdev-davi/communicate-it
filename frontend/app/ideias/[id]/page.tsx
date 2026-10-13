@@ -32,16 +32,20 @@ async function IdeaDetail({ params }: { params: PageProps<"/ideias/[id]">["param
       </StatePanel>
     );
   }
+  const mine = me.id === idea.author.id;
+  const open = idea.status === "open";
   return (
     <>
       <IdeaCard
         idea={idea}
         full
-        // Visitante nem chega aqui; o autor não participa da própria ideia (a API também recusa, 409).
-        action={me.id !== idea.author.id && <InterestButton ideaId={idea.id} interested={idea.interested} />}
+        // Visitante nem chega aqui; o autor não participa da própria ideia, e só ideia aberta recebe interessados
+        // (a API também recusa as duas, 409).
+        action={!mine && open && <InterestButton ideaId={idea.id} interested={idea.interested} />}
       />
       {idea.interested && <p className={styles.hint}>Você está na lista. O autor vai te chamar no Discord.</p>}
-      {me.id === idea.author.id && <AuthorPanel ideaId={idea.id} />}
+      {!mine && !open && !idea.interested && <p className={styles.hint}>Esta ideia não está recebendo novos interessados.</p>}
+      {mine && <AuthorPanel ideaId={idea.id} status={idea.status} />}
       {idea.interests && <Interested people={idea.interests} ideaTitle={idea.title} />}
     </>
   );
