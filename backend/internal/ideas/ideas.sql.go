@@ -66,7 +66,7 @@ type CreateIdeaRow struct {
 	Interested      bool
 }
 
-// Create, Update, List e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
+// Create, Update, List, ListMy e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
 // interest_count e interested dizem quantos marcaram "quero participar" e se quem pede (viewer) é um deles; viewer 0 = visitante.
 // Ideia recém-criada ainda não tem interessados: as duas colunas saem fixas.
 func (q *Queries) CreateIdea(ctx context.Context, arg CreateIdeaParams) (CreateIdeaRow, error) {
@@ -282,6 +282,70 @@ func (q *Queries) ListInterests(ctx context.Context, ideaID int64) ([]ListIntere
 			&i.Name,
 			&i.AvatarUrl,
 			&i.DiscordID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMyIdeas = `-- name: ListMyIdeas :many
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
+       (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
+       false AS interested
+FROM ideas i
+JOIN users u ON u.id = i.author_id
+WHERE i.author_id = $1
+ORDER BY i.created_at DESC, i.id DESC
+`
+
+type ListMyIdeasRow struct {
+	ID              int64
+	Title           string
+	Description     string
+	Course          string
+	Category        string
+	Slots           int32
+	Status          string
+	CreatedAt       time.Time
+	DoneAt          *time.Time
+	AuthorID        int64
+	AuthorName      string
+	AuthorAvatarUrl *string
+	InterestCount   int64
+	Interested      bool
+}
+
+// Todas as ideias de quem pede, em qualquer status. Mesmas colunas do ListIdeas; interested sai false (o autor não participa).
+func (q *Queries) ListMyIdeas(ctx context.Context, authorID int64) ([]ListMyIdeasRow, error) {
+	rows, err := q.db.Query(ctx, listMyIdeas, authorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyIdeasRow
+	for rows.Next() {
+		var i ListMyIdeasRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.Course,
+			&i.Category,
+			&i.Slots,
+			&i.Status,
+			&i.CreatedAt,
+			&i.DoneAt,
+			&i.AuthorID,
+			&i.AuthorName,
+			&i.AuthorAvatarUrl,
+			&i.InterestCount,
+			&i.Interested,
 		); err != nil {
 			return nil, err
 		}
