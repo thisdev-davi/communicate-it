@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -55,25 +56,9 @@ func run() error {
 	}
 
 	a := auth.NewHandler(pool, clientID, clientSecret, redirectURL, guildID)
-	h := ideas.NewHandler(pool, a.UserID)
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/auth/discord", a.Login)
-	mux.HandleFunc("GET /api/auth/discord/callback", a.Callback)
-	mux.HandleFunc("POST /api/auth/logout", a.Logout)
-	mux.HandleFunc("GET /api/me", a.Me)
-	mux.HandleFunc("PATCH /api/me", a.SetCourse)
-	mux.HandleFunc("POST /api/ideas", h.Create)
-	mux.HandleFunc("GET /api/ideas", h.List)
-	mux.HandleFunc("GET /api/ideas/{id}", h.Get)
-	mux.HandleFunc("PUT /api/ideas/{id}", h.Update)
-	mux.HandleFunc("DELETE /api/ideas/{id}", h.Delete)
-	mux.HandleFunc("PUT /api/ideas/{id}/status", h.SetStatus)
-	mux.HandleFunc("PUT /api/ideas/{id}/interest", h.PutInterest)
-	mux.HandleFunc("DELETE /api/ideas/{id}/interest", h.DeleteInterest)
-
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           mux,
+		Handler:           routes(a, ideas.NewHandler(pool, a.UserID)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	slog.Info("api no ar", "addr", srv.Addr)
@@ -90,4 +75,32 @@ func run() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	return srv.Shutdown(shutdownCtx)
+}
+
+// routes monta a API atrás da proteção contra requisição de outra origem: um POST/PUT/PATCH/DELETE
+// que o navegador marca como vindo de outro site (Sec-Fetch-Site) leva 403 antes de chegar no handler.
+// O SameSite=Lax do cookie não basta aqui: o sslip.io não está na Public Suffix List, então para o
+// navegador qualquer *.sslip.io é "o mesmo site" e mandaria o cookie junto.
+func routes(a *auth.Handler, h *ideas.Handler) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/auth/discord", a.Login)
+	mux.HandleFunc("GET /api/auth/discord/callback", a.Callback)
+	mux.HandleFunc("POST /api/auth/logout", a.Logout)
+	mux.HandleFunc("GET /api/me", a.Me)
+	mux.HandleFunc("PATCH /api/me", a.SetCourse)
+	mux.HandleFunc("POST /api/ideas", h.Create)
+	mux.HandleFunc("GET /api/ideas", h.List)
+	mux.HandleFunc("GET /api/ideas/{id}", h.Get)
+	mux.HandleFunc("PUT /api/ideas/{id}", h.Update)
+	mux.HandleFunc("DELETE /api/ideas/{id}", h.Delete)
+	mux.HandleFunc("PUT /api/ideas/{id}/status", h.SetStatus)
+	mux.HandleFunc("PUT /api/ideas/{id}/interest", h.PutInterest)
+	mux.HandleFunc("DELETE /api/ideas/{id}/interest", h.DeleteInterest)
+	p := http.NewCrossOriginProtection()
+	p.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		io.WriteString(w, `{"error":"cross_origin"}`+"\n")
+	}))
+	return p.Handler(mux)
 }
