@@ -31,9 +31,9 @@ const createIdea = `-- name: CreateIdea :one
 WITH i AS (
     INSERT INTO ideas (author_id, title, description, course, category, slots)
     VALUES ($1, $2, $3, $4, $5, $6)
-    RETURNING id, author_id, title, description, course, category, slots, status, created_at
+    RETURNING id, author_id, title, description, course, category, slots, status, created_at, done_at
 )
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        0::bigint AS interest_count, false AS interested
 FROM i
@@ -58,6 +58,7 @@ type CreateIdeaRow struct {
 	Slots           int32
 	Status          string
 	CreatedAt       time.Time
+	DoneAt          *time.Time
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -87,6 +88,7 @@ func (q *Queries) CreateIdea(ctx context.Context, arg CreateIdeaParams) (CreateI
 		&i.Slots,
 		&i.Status,
 		&i.CreatedAt,
+		&i.DoneAt,
 		&i.AuthorID,
 		&i.AuthorName,
 		&i.AuthorAvatarUrl,
@@ -107,7 +109,7 @@ func (q *Queries) DeleteIdea(ctx context.Context, id int64) error {
 }
 
 const getIdea = `-- name: GetIdea :one
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested
@@ -130,6 +132,7 @@ type GetIdeaRow struct {
 	Slots           int32
 	Status          string
 	CreatedAt       time.Time
+	DoneAt          *time.Time
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -149,6 +152,7 @@ func (q *Queries) GetIdea(ctx context.Context, arg GetIdeaParams) (GetIdeaRow, e
 		&i.Slots,
 		&i.Status,
 		&i.CreatedAt,
+		&i.DoneAt,
 		&i.AuthorID,
 		&i.AuthorName,
 		&i.AuthorAvatarUrl,
@@ -159,18 +163,24 @@ func (q *Queries) GetIdea(ctx context.Context, arg GetIdeaParams) (GetIdeaRow, e
 }
 
 const getIdeaAuthor = `-- name: GetIdeaAuthor :one
-SELECT author_id FROM ideas WHERE id = $1
+SELECT author_id, status FROM ideas WHERE id = $1
 `
 
-func (q *Queries) GetIdeaAuthor(ctx context.Context, id int64) (int64, error) {
+type GetIdeaAuthorRow struct {
+	AuthorID int64
+	Status   string
+}
+
+// O status vem junto: o "quero participar" só entra em ideia aberta.
+func (q *Queries) GetIdeaAuthor(ctx context.Context, id int64) (GetIdeaAuthorRow, error) {
 	row := q.db.QueryRow(ctx, getIdeaAuthor, id)
-	var author_id int64
-	err := row.Scan(&author_id)
-	return author_id, err
+	var i GetIdeaAuthorRow
+	err := row.Scan(&i.AuthorID, &i.Status)
+	return i, err
 }
 
 const listIdeas = `-- name: ListIdeas :many
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested
@@ -194,6 +204,7 @@ type ListIdeasRow struct {
 	Slots           int32
 	Status          string
 	CreatedAt       time.Time
+	DoneAt          *time.Time
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -220,6 +231,7 @@ func (q *Queries) ListIdeas(ctx context.Context, arg ListIdeasParams) ([]ListIde
 			&i.Slots,
 			&i.Status,
 			&i.CreatedAt,
+			&i.DoneAt,
 			&i.AuthorID,
 			&i.AuthorName,
 			&i.AuthorAvatarUrl,
@@ -291,13 +303,31 @@ func (q *Queries) RemoveInterest(ctx context.Context, arg RemoveInterestParams) 
 	return err
 }
 
+const setIdeaStatus = `-- name: SetIdeaStatus :exec
+UPDATE ideas
+SET status = $1,
+    done_at = CASE WHEN $1 = 'done' THEN COALESCE(done_at, now()) END
+WHERE id = $2
+`
+
+type SetIdeaStatusParams struct {
+	Status string
+	ID     int64
+}
+
+// done_at acompanha o status: preenchido ao concluir (repetir done mantém a data), null ao sair de done.
+func (q *Queries) SetIdeaStatus(ctx context.Context, arg SetIdeaStatusParams) error {
+	_, err := q.db.Exec(ctx, setIdeaStatus, arg.Status, arg.ID)
+	return err
+}
+
 const updateIdea = `-- name: UpdateIdea :one
 WITH i AS (
     UPDATE ideas SET title = $2, description = $3, course = $4, category = $5, slots = $6
     WHERE ideas.id = $1
-    RETURNING id, author_id, title, description, course, category, slots, status, created_at
+    RETURNING id, author_id, title, description, course, category, slots, status, created_at, done_at
 )
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        false AS interested
@@ -323,6 +353,7 @@ type UpdateIdeaRow struct {
 	Slots           int32
 	Status          string
 	CreatedAt       time.Time
+	DoneAt          *time.Time
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -351,6 +382,7 @@ func (q *Queries) UpdateIdea(ctx context.Context, arg UpdateIdeaParams) (UpdateI
 		&i.Slots,
 		&i.Status,
 		&i.CreatedAt,
+		&i.DoneAt,
 		&i.AuthorID,
 		&i.AuthorName,
 		&i.AuthorAvatarUrl,

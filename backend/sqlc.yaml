@@ -13,6 +13,12 @@ sql:
         overrides:
           - db_type: timestamptz
             go_type: time.Time
+          - db_type: timestamptz # done_at: nula vira *time.Time, que sai como null no JSON
+            nullable: true
+            go_type:
+              import: time
+              type: Time
+              pointer: true
   - engine: postgresql
     schema: db/migrations
     queries: db/queries/auth.sql
