@@ -109,9 +109,10 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   - logado sem curso vai para `/cadastro`.
 - **Página da ideia (`/ideias/<id>`):**
   - o card inteiro (`full`), sem cortes;
-  - quem não é autor vê o "Quero participar", que vira "Interessado" (`aria-pressed`);
+  - quem não é autor vê o "Quero participar", que vira "Interessado" (`aria-pressed`), só enquanto a ideia está Aberta;
   - o interessado lê "Você está na lista. O autor vai te chamar no Discord.";
-  - o autor vê o painel "Sua ideia", com "Editar ideia" (`secondary`) e "Apagar ideia" (`danger`), e embaixo a seção "Interessados (N)" com "Chamar no Discord", que abre o perfil e copia a primeira mensagem;
+  - na ideia Em andamento ou Concluída, o botão some para todos, e quem não está na lista lê "Esta ideia não está recebendo novos interessados.";
+  - o autor vê o painel "Sua ideia": o grupo "Status" com três botões `sm` (o atual `primary` com `aria-pressed`, os outros `secondary`; o clique já salva) e a regra "Só ideias abertas recebem novos interessados.", depois "Editar ideia" (`secondary`) e "Apagar ideia" (`danger`), e embaixo a seção "Interessados (N)" com "Chamar no Discord", que abre o perfil e copia a primeira mensagem;
   - "Apagar ideia" confirma na caixa nativa do navegador (`confirm()`), que já é acessível, e depois volta ao mural;
   - ideia inexistente mostra "Ideia não encontrada".
 - **Postar (`/ideias/nova`):** só para quem está logado e tem curso. Depois do envio, vai para a página da ideia nova.
