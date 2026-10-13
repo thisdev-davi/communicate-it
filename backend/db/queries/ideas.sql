@@ -1,4 +1,4 @@
--- Create, Update, List e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
+-- Create, Update, List, ListMy e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
 -- interest_count e interested dizem quantos marcaram "quero participar" e se quem pede (viewer) é um deles; viewer 0 = visitante.
 
 -- name: CreateIdea :one
@@ -82,3 +82,14 @@ UPDATE ideas
 SET status = sqlc.arg('status'),
     done_at = CASE WHEN sqlc.arg('status') = 'done' THEN COALESCE(done_at, now()) END
 WHERE id = sqlc.arg('id');
+
+-- name: ListMyIdeas :many
+-- Todas as ideias de quem pede, em qualquer status. Mesmas colunas do ListIdeas; interested sai false (o autor não participa).
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
+       (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
+       false AS interested
+FROM ideas i
+JOIN users u ON u.id = i.author_id
+WHERE i.author_id = $1
+ORDER BY i.created_at DESC, i.id DESC;
