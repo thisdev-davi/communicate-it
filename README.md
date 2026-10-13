@@ -17,6 +17,7 @@ Em desenvolvimento, construído em fatias verticais (tela → API → banco).
 - [x] Fatia 3: escolha de curso no primeiro login e prévia do mural para visitante
 - [x] Fatia 4: página da ideia (`GET /api/ideas/{id}`), aberta pelo card do mural
 - [x] Fatia 5: "Quero participar" sem aprovação; o autor vê os interessados e chama no Discord
+- [x] Fatia 6: o autor edita e apaga a própria ideia
 - [ ] Demais funcionalidades do MVP (ver [PRD](docs/PRD.md))
 
 ## Stack
