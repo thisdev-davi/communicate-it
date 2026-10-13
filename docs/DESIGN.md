@@ -85,7 +85,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 
 - **Coluna da página:** conteúdo com no máximo 1040px, centralizado, com recuo lateral `space-6` (`space-4` no celular). Páginas de leitura e formulário (ideia, postar) usam a coluna mais estreita, de 760px.
 - **Cabeçalho:** a barra vai de ponta a ponta, mas o conteúdo dela (`.bar`) segue a coluna de 1040px. Logo, título da página e primeiro card começam na mesma linha vertical, e a última ação termina junto com a última coluna da grade.
-- **Navegação:** links no cabeçalho, colados no logo ("Mural", "Concluídos"), com `aria-current="page"` na página atual, que ganha cor `primary` e fundo `primary-soft` (nunca só a cor). Barra no topo, sem menu lateral nem hambúrguer: no celular (até 600px), os links descem para uma segunda linha da barra.
+- **Navegação:** links no cabeçalho, colados no logo ("Mural", "Concluídos" e, só para quem está logado, "Minhas ideias"), com `aria-current="page"` na página atual, que ganha cor `primary` e fundo `primary-soft` (nunca só a cor). Barra no topo, sem menu lateral nem hambúrguer: no celular (até 600px), os links descem para uma segunda linha da barra.
 - **Topo do mural:** título e texto de apoio à esquerda; a ação da página ("Postar ideia") à direita, alinhada pela base. No celular, a ação desce.
 - **Voltar:** páginas internas começam com o link "Voltar ao mural". A página de editar volta para a ideia ("Voltar à ideia").
 
@@ -110,6 +110,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   - quem está logado vê tudo e o botão "Postar ideia";
   - logado sem curso vai para `/cadastro`.
 - **Concluídos (`/concluidas`):** a vitrine, com a mesma grade do mural e as concluídas mais recentes primeiro. O visitante vê a prévia de 3 e o convite para entrar. É onde o build in public vai entrar.
+- **Minhas ideias (`/minhas-ideias`):** só para quem está logado. Todas as ideias do aluno, em qualquer status, na mesma grade do mural, com "Postar ideia" no topo. Os controles ficam na página de cada ideia.
 - **Página da ideia (`/ideias/<id>`):**
   - o card inteiro (`full`), sem cortes;
   - quem não é autor vê o "Quero participar", que vira "Interessado" (`aria-pressed`), só enquanto a ideia está Aberta;
