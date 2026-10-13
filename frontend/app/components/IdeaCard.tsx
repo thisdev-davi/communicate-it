@@ -54,7 +54,7 @@ export function IdeaCard({ idea, full = false, action }: { idea: Idea; full?: bo
       <footer className={styles.foot}>
         <div className={styles.byline}>
           <div className={styles.who}>
-            <Avatar name={idea.author.name} />
+            <Avatar name={idea.author.name} src={idea.author.avatar_url} />
             <p className={styles.author}>{idea.author.name}</p>
           </div>
           {action ??
