@@ -65,7 +65,7 @@ type CreateIdeaRow struct {
 	Interested      bool
 }
 
-// Create, List e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
+// Create, Update, List e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
 // interest_count e interested dizem quantos marcaram "quero participar" e se quem pede (viewer) é um deles; viewer 0 = visitante.
 // Ideia recém-criada ainda não tem interessados: as duas colunas saem fixas.
 func (q *Queries) CreateIdea(ctx context.Context, arg CreateIdeaParams) (CreateIdeaRow, error) {
@@ -94,6 +94,16 @@ func (q *Queries) CreateIdea(ctx context.Context, arg CreateIdeaParams) (CreateI
 		&i.Interested,
 	)
 	return i, err
+}
+
+const deleteIdea = `-- name: DeleteIdea :exec
+DELETE FROM ideas WHERE id = $1
+`
+
+// Os interessados vão junto: interests tem ON DELETE CASCADE.
+func (q *Queries) DeleteIdea(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteIdea, id)
+	return err
 }
 
 const getIdea = `-- name: GetIdea :one
@@ -279,4 +289,73 @@ type RemoveInterestParams struct {
 func (q *Queries) RemoveInterest(ctx context.Context, arg RemoveInterestParams) error {
 	_, err := q.db.Exec(ctx, removeInterest, arg.IdeaID, arg.UserID)
 	return err
+}
+
+const updateIdea = `-- name: UpdateIdea :one
+WITH i AS (
+    UPDATE ideas SET title = $2, description = $3, course = $4, category = $5, slots = $6
+    WHERE ideas.id = $1
+    RETURNING id, author_id, title, description, course, category, slots, status, created_at
+)
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
+       (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
+       false AS interested
+FROM i
+JOIN users u ON u.id = i.author_id
+`
+
+type UpdateIdeaParams struct {
+	ID          int64
+	Title       string
+	Description string
+	Course      string
+	Category    string
+	Slots       int32
+}
+
+type UpdateIdeaRow struct {
+	ID              int64
+	Title           string
+	Description     string
+	Course          string
+	Category        string
+	Slots           int32
+	Status          string
+	CreatedAt       time.Time
+	AuthorID        int64
+	AuthorName      string
+	AuthorAvatarUrl *string
+	InterestCount   int64
+	Interested      bool
+}
+
+// Troca os campos do postar. O autor não participa da própria ideia, então interested sai fixo.
+// ideas.id e não só id: com o id solto, o sqlc 1.29 acusa referência ambígua no UPDATE dentro do WITH.
+func (q *Queries) UpdateIdea(ctx context.Context, arg UpdateIdeaParams) (UpdateIdeaRow, error) {
+	row := q.db.QueryRow(ctx, updateIdea,
+		arg.ID,
+		arg.Title,
+		arg.Description,
+		arg.Course,
+		arg.Category,
+		arg.Slots,
+	)
+	var i UpdateIdeaRow
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Description,
+		&i.Course,
+		&i.Category,
+		&i.Slots,
+		&i.Status,
+		&i.CreatedAt,
+		&i.AuthorID,
+		&i.AuthorName,
+		&i.AuthorAvatarUrl,
+		&i.InterestCount,
+		&i.Interested,
+	)
+	return i, err
 }
