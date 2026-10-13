@@ -64,7 +64,19 @@ O secret nunca vai para o repositório: ele vive só no `.env`.
 
 ## Deploy na VPS
 
-Em https://comunica.5-183-8-106.sslip.io. A VPS é dividida com outros projetos: o Comunica tem compose e Postgres próprios (`compose.prod.yaml`, em `/opt/comunica-faesa`) e nenhuma porta aberta no host. O HTTPS vem do Caddy compartilhado em `/opt/proxy`, que manda `/api/*` para `comunica-api` e o resto para `comunica-web` pela rede Docker `proxy`. A cada subida, o serviço `migrate` roda o goose antes da API.
+Em https://comunica.5-183-8-106.sslip.io. A VPS é dividida com outros projetos: o Comunica tem compose e Postgres próprios e nenhuma porta aberta no host. O HTTPS vem do Caddy compartilhado em `/opt/proxy`, que manda `/api/*` para `comunica-api` e o resto para `comunica-web` pela rede Docker `proxy`. A cada subida, o serviço `migrate` roda o goose antes da API.
+
+Na VPS:
+
+```
+/opt/comunica-faesa/       root, 755: o usuário deploy não cria nem troca nada aqui
+  compose.prod.yaml        root, 644: copiado à mão de app/
+  deploy.sh                root, 644: copiado à mão de app/
+  .env                     root:deploy, 640: segredos (o compose roda como deploy e precisa ler)
+  app/                     deploy: clone do repositório, onde o deploy automático faz git pull
+```
+
+Por que o compose e o `deploy.sh` ficam fora do git: o usuário `deploy` está no grupo `docker`, que na prática vale root. Se esses dois arquivos viessem do `git pull`, um commit na `main` (o repositório é público) bastaria para virar root na VPS, por exemplo montando `/` num container. Fora do alcance do git, um commit na `main` só muda o código que roda dentro dos containers: o build do Docker é isolado, e volumes e privilégios vêm só do compose do root.
 
 Primeira vez:
 
@@ -72,8 +84,12 @@ Primeira vez:
 2. Na VPS, como root:
 
    ```sh
-   git clone https://github.com/thisdev-davi/comunica-faesa.git /opt/comunica-faesa
+   useradd -m -s /bin/sh -G docker deploy
+   install -d -m 755 -o root -g root /opt/comunica-faesa
+   git clone https://github.com/thisdev-davi/comunica-faesa.git /opt/comunica-faesa/app
+   chown -R deploy:deploy /opt/comunica-faesa/app
    cd /opt/comunica-faesa
+   install -o root -g root -m 644 app/compose.prod.yaml app/deploy.sh .
    # .env só com estas chaves; a senha em hex porque vai dentro da URL do banco
    cat > .env <<EOF
    POSTGRES_PASSWORD=$(openssl rand -hex 24)
@@ -83,7 +99,7 @@ Primeira vez:
    DISCORD_GUILD_ID=
    DISCORD_INVITE_URL=
    EOF
-   chmod 600 .env && nano .env      # preencha as DISCORD_*
+   chown root:deploy .env && chmod 640 .env && nano .env      # preencha as DISCORD_*
    docker compose -f compose.prod.yaml up -d --build
    ```
 
@@ -106,25 +122,35 @@ Primeira vez:
 
 ### Deploy automático
 
-Todo push na `main` (menos os só de `docs/` e `.md`) roda o workflow `.github/workflows/deploy.yml`: testes da API e checagens do front e, se passarem, o `deploy.sh` na VPS. O mesmo workflow roda as checagens em todo PR. Para refazer o deploy sem commit novo (ex.: depois de trocar o `.env`): aba **Actions** → **CI e deploy** → **Run workflow**, ou `gh workflow run deploy.yml`.
+Todo push na `main` (menos os só de `docs/` e `.md`) roda o workflow `.github/workflows/deploy.yml`: testes da API e checagens do front e, se passarem, o deploy na VPS. O mesmo workflow roda as checagens em todo PR. Para refazer o deploy sem commit novo (ex.: depois de trocar o `.env`): aba **Actions** → **CI e deploy** → **Run workflow**, ou `gh workflow run deploy.yml`.
 
-O GitHub entra na VPS como o usuário `deploy`, nunca como root, com uma chave que só serve para isso: o `authorized_keys` força o comando, então quem tiver a chave não abre shell nem faz túnel, só roda o deploy. Os segredos ficam no environment `production` do GitHub, liberado só para a `main`:
+O GitHub entra na VPS como o usuário `deploy`, nunca como root, com uma chave que só serve para isso: o `authorized_keys` força o comando, então quem tiver a chave não abre shell nem faz túnel, só atualiza `app/` e roda o `deploy.sh` do root. Os segredos ficam no environment `production` do GitHub, liberado só para a `main`:
 
 - `DEPLOY_SSH_KEY`: chave privada (gerada só para isso, nunca a de outro projeto)
 - `DEPLOY_KNOWN_HOSTS`: a linha `<host> ssh-ed25519 ...` da chave do servidor, para não aceitar um servidor falso
 - `DEPLOY_HOST`: endereço da VPS
 
-Configuração na VPS (uma vez, como root):
+A chave na VPS (uma vez, como root):
 
 ```sh
-useradd -m -s /bin/sh -G docker deploy        # o grupo docker vale root na prática: o command= abaixo é o que limita a chave
-chown -R deploy:deploy /opt/comunica-faesa    # o .env continua 600, agora do deploy
 install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
-echo 'restrict,command="cd /opt/comunica-faesa && git pull --ff-only -q && exec sh deploy.sh" <chave pública>' > /home/deploy/.ssh/authorized_keys
+echo 'restrict,command="cd /opt/comunica-faesa/app && git pull --ff-only -q && exec sh /opt/comunica-faesa/deploy.sh" <chave pública>' > /home/deploy/.ssh/authorized_keys
 chown deploy:deploy /home/deploy/.ssh/authorized_keys && chmod 600 /home/deploy/.ssh/authorized_keys
 ```
 
-Se o deploy falhar, o job fica vermelho na aba Actions. Se foi no build, os containers antigos continuam no ar. Logs: `docker compose -f compose.prod.yaml logs --tail 50 comunica-api`.
+Se o deploy falhar, o job fica vermelho na aba Actions. Se foi no build, os containers antigos continuam no ar. Logs: `cd /opt/comunica-faesa && docker compose -f compose.prod.yaml logs --tail 50 comunica-api`.
+
+### Mudou o `compose.prod.yaml` ou o `deploy.sh`?
+
+O deploy automático não leva essas mudanças: depois do merge, ele já atualizou `app/`, mas a VPS continua usando as cópias do root. Revise o que mudou e copie à mão, como root:
+
+```sh
+cd /opt/comunica-faesa
+diff -u compose.prod.yaml app/compose.prod.yaml; diff -u deploy.sh app/deploy.sh   # leia antes de copiar
+install -o root -g root -m 644 app/compose.prod.yaml app/deploy.sh .
+```
+
+Depois, rode o deploy pelo **Run workflow**. Se o código do merge depende da mudança (ex.: uma variável nova no compose), o deploy automático do merge pode falhar até a cópia; o Run workflow resolve.
 
 O seed nunca roda na VPS: lá só entram dados reais, criados pelo próprio site.
 
