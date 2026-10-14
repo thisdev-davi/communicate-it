@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { CATEGORIES, COURSE_SHORT, COURSES, STATUSES, type Idea } from "../ideas";
+import { CATEGORIES, COURSE_SHORT, COURSES, STATUSES, type Face, type Idea } from "../ideas";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import styles from "./IdeaCard.module.css";
@@ -25,12 +25,32 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// Rostos dos interessados, como a lista de contribuidores do GitHub: fotos sobrepostas e "+N" para o resto.
+// A lista leva o nome de cada um (alt da foto ou iniciais com sr-only); o "+N" é só visual, o total vem na linha de ícones.
+function Faces({ faces, max, total }: { faces: Face[]; max: number; total: number }) {
+  const shown = faces.slice(0, max);
+  return (
+    <ul className={styles.faces} aria-label="Alguns interessados">
+      {shown.map((f) => (
+        <li key={f.id} title={f.name}>
+          <Avatar name={f.name} src={f.avatar_url} />
+        </li>
+      ))}
+      {total > shown.length && (
+        <li className={styles.more} aria-hidden="true">
+          +{total - shown.length}
+        </li>
+      )}
+    </ul>
+  );
+}
+
 // Só o que a API devolve hoje: sem habilidades e sem @ do Discord.
 // No mural, o card não tem ação (o título leva à página da ideia, é lá que se participa) e todos têm a mesma altura:
 // etiqueta em 1 linha, título em até 2, descrição em 3 e o rodapé sempre embaixo. Quem já participa vê a borda de
 // destaque e o selo "Você participa" na linha do autor.
 // `full` é a própria página da ideia: título vira h1, nada é cortado e não há link (já estamos nela).
-// `action` ocupa a direita da linha do autor: a página põe ali o "Quero participar".
+// `action` ocupa a direita da linha do autor, depois dos rostos: a página põe ali o "Quero participar".
 export function IdeaCard({ idea, full = false, action }: { idea: Idea; full?: boolean; action?: ReactNode }) {
   const Title = full ? "h1" : "h3";
   return (
@@ -57,13 +77,19 @@ export function IdeaCard({ idea, full = false, action }: { idea: Idea; full?: bo
             <Avatar name={idea.author.name} src={idea.author.avatar_url} />
             <p className={styles.author}>{idea.author.name}</p>
           </div>
-          {action ??
-            (idea.interested && (
-              <span className={`${styles.badge} ${styles.joined}`}>
-                <Icon name="circle-check" size={14} />
-                Você participa
-              </span>
-            ))}
+          {/* Rostos só para quem está logado (o visitante recebe []), antes da ação ou do selo. */}
+          <div className={styles.side}>
+            {idea.interest_faces.length > 0 && (
+              <Faces faces={idea.interest_faces} max={full ? 8 : 3} total={idea.interest_count} />
+            )}
+            {action ??
+              (idea.interested && (
+                <span className={`${styles.badge} ${styles.joined}`}>
+                  <Icon name="circle-check" size={14} />
+                  Você participa
+                </span>
+              ))}
+          </div>
         </div>
         <ul className={styles.facts}>
           <li>
