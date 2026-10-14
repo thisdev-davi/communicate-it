@@ -49,6 +49,22 @@
   gap: var(--space-3);
 }
 
+/* Grupo "Status" do painel do autor: rótulo, botões e a regra da trava. */
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
 .error {
   margin: 0;
   font-size: 13px;

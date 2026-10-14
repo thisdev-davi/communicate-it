@@ -107,7 +107,8 @@ func TestSessionErrorIs500(t *testing.T) {
 		}
 	}
 	for name, hf := range map[string]http.HandlerFunc{
-		"GET uma": h.Get, "PUT ideia": h.Update, "DELETE ideia": h.Delete, "PUT interesse": h.PutInterest, "DELETE interesse": h.DeleteInterest,
+		"GET uma": h.Get, "PUT ideia": h.Update, "DELETE ideia": h.Delete, "PUT status": h.SetStatus,
+		"PUT interesse": h.PutInterest, "DELETE interesse": h.DeleteInterest, "GET minhas": h.Mine,
 	} {
 		if rec := doID(t, hf, http.MethodGet, "1"); rec.Code != 500 || decode[errorResponse](t, rec).Error != "internal" {
 			t.Errorf("%s: status = %d (%s), quer 500 internal", name, rec.Code, rec.Body)
@@ -153,6 +154,8 @@ func TestEditRejectsVisitorAndBadID(t *testing.T) {
 		{"DELETE visitante", visitor.Delete, "1", 401, "unauthenticated"},
 		{"PUT id inválido", logged.Update, "abc", 404, "not_found"},
 		{"DELETE id zero", logged.Delete, "0", 404, "not_found"},
+		{"PUT status visitante", visitor.SetStatus, "1", 401, "unauthenticated"},
+		{"PUT status id inválido", logged.SetStatus, "abc", 404, "not_found"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -409,6 +412,196 @@ func TestUpdateAndDelete(t *testing.T) {
 	var left int
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM interests`).Scan(&left); err != nil || left != 0 {
 		t.Errorf("interessados depois do DELETE: %d (%v), quer 0", left, err)
+	}
+}
+
+// Status contra Postgres real: só o autor troca, só ideia aberta recebe interessados e done_at acompanha o done.
+func TestStatus(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+	var authorID, fanID int64
+	err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID)
+	if err == nil {
+		err = pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Ana Teste') RETURNING id`).Scan(&fanID)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	author, fan := NewHandler(pool, loggedAs(authorID)), NewHandler(pool, loggedAs(fanID))
+	rec := do(t, author.Create, http.MethodPost, validBody)
+	if rec.Code != 201 {
+		t.Fatalf("POST: %d (%s)", rec.Code, rec.Body)
+	}
+	created := decode[ideaResponse](t, rec)
+	if created.DoneAt != nil || !strings.Contains(rec.Body.String(), `"done_at":null`) {
+		t.Errorf("ideia nova com done_at: %s", rec.Body)
+	}
+	id := strconv.FormatInt(created.ID, 10)
+
+	for _, step := range []struct {
+		name       string
+		hf         http.HandlerFunc
+		id, body   string
+		wantStatus int
+		wantError  string
+	}{
+		{"outra pessoa troca", fan.SetStatus, id, `{"status":"done"}`, 403, "not_author"},
+		{"status fora da lista", author.SetStatus, id, `{"status":"closed"}`, 400, "validation_failed"},
+		{"status vazio", author.SetStatus, id, `{}`, 400, "validation_failed"},
+		{"json malformado", author.SetStatus, id, `{`, 400, "invalid_json"},
+		{"ideia que não existe", author.SetStatus, "999999", `{"status":"done"}`, 404, "not_found"},
+	} {
+		rec := doIDBody(t, step.hf, http.MethodPut, step.id, step.body)
+		if rec.Code != step.wantStatus || decode[errorResponse](t, rec).Error != step.wantError {
+			t.Errorf("%s: %d (%s), quer %d %s", step.name, rec.Code, rec.Body, step.wantStatus, step.wantError)
+		}
+	}
+
+	// setStatus troca e devolve a ideia como o GET a vê.
+	setStatus := func(status string) ideaResponse {
+		t.Helper()
+		if rec := doIDBody(t, author.SetStatus, http.MethodPut, id, `{"status":" `+status+` "}`); rec.Code != 204 {
+			t.Fatalf("PUT status %s: %d (%s)", status, rec.Code, rec.Body)
+		}
+		return decode[ideaResponse](t, doID(t, author.Get, http.MethodGet, id))
+	}
+	interest := func() int { return doID(t, fan.PutInterest, http.MethodPut, id).Code }
+
+	// Em andamento trava a lista, mas não tira quem já estava.
+	if code := interest(); code != 204 {
+		t.Fatalf("interesse em ideia aberta: %d", code)
+	}
+	if got := setStatus("in_progress"); got.Status != "in_progress" || got.DoneAt != nil || got.InterestCount != 1 {
+		t.Errorf("em andamento: %+v", got)
+	}
+	if rec := doID(t, fan.PutInterest, http.MethodPut, id); rec.Code != 409 || decode[errorResponse](t, rec).Error != "closed" {
+		t.Errorf("interesse em ideia em andamento: %d (%s), quer 409 closed", rec.Code, rec.Body)
+	}
+
+	// Concluir preenche done_at; concluir de novo mantém a data.
+	done := setStatus("done")
+	if done.Status != "done" || done.DoneAt == nil {
+		t.Fatalf("concluída: %+v", done)
+	}
+	if again := setStatus("done"); again.DoneAt == nil || !again.DoneAt.Equal(*done.DoneAt) {
+		t.Errorf("concluir de novo mudou done_at: %v, era %v", again.DoneAt, done.DoneAt)
+	}
+	if code := interest(); code != 409 {
+		t.Errorf("interesse em ideia concluída: %d, quer 409", code)
+	}
+
+	// Reabrir limpa done_at e destrava.
+	if got := setStatus("open"); got.Status != "open" || got.DoneAt != nil {
+		t.Errorf("reaberta: %+v", got)
+	}
+	if code := interest(); code != 204 {
+		t.Errorf("interesse em ideia reaberta: %d, quer 204", code)
+	}
+}
+
+// Mural e vitrine contra Postgres real: concluída sai do mural, a vitrine ordena pela conclusão e o visitante vê 3.
+func TestMuralAndShowcase(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+	var authorID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID); err != nil {
+		t.Fatal(err)
+	}
+	author, visitor := NewHandler(pool, loggedAs(authorID)), NewHandler(pool, loggedAs(0))
+	ids := make([]int64, 6) // ids[0] é a mais antiga
+	for i := range ids {
+		rec := do(t, author.Create, http.MethodPost, validBody)
+		if rec.Code != 201 {
+			t.Fatalf("POST: %d (%s)", rec.Code, rec.Body)
+		}
+		ids[i] = decode[ideaResponse](t, rec).ID
+	}
+	setStatus := func(id int64, status string) {
+		t.Helper()
+		if rec := doIDBody(t, author.SetStatus, http.MethodPut, strconv.FormatInt(id, 10), `{"status":"`+status+`"}`); rec.Code != 204 {
+			t.Fatalf("PUT status: %d (%s)", rec.Code, rec.Body)
+		}
+	}
+	// Conclui fora da ordem de postagem: a vitrine tem de seguir a conclusão, não a postagem.
+	for _, i := range []int{1, 0, 2, 3} {
+		setStatus(ids[i], "done")
+	}
+	setStatus(ids[4], "in_progress")
+
+	list := func(h *Handler, query string) []int64 {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		h.List(rec, httptest.NewRequest(http.MethodGet, "/api/ideas?"+query, nil))
+		if rec.Code != 200 {
+			t.Fatalf("GET ?%s: %d (%s)", query, rec.Code, rec.Body)
+		}
+		var got []int64
+		for _, it := range decode[struct{ Items []ideaResponse }](t, rec).Items {
+			got = append(got, it.ID)
+		}
+		return got
+	}
+	for _, tc := range []struct {
+		name string
+		h    *Handler
+		q    string
+		want []int64
+	}{
+		{"mural sem as concluídas", author, "", []int64{ids[5], ids[4]}},
+		{"vitrine pela conclusão", author, "status=done", []int64{ids[3], ids[2], ids[0], ids[1]}},
+		{"vitrine do visitante: só 3", visitor, "status=done", []int64{ids[3], ids[2], ids[0]}},
+	} {
+		if got := list(tc.h, tc.q); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s: %v, quer %v", tc.name, got, tc.want)
+		}
+	}
+
+	rec := httptest.NewRecorder()
+	author.List(rec, httptest.NewRequest(http.MethodGet, "/api/ideas?status=open", nil))
+	if got := decode[errorResponse](t, rec); rec.Code != 400 || got.Error != "validation_failed" || got.Fields["status"] == "" {
+		t.Errorf("status inválido: %d (%s), quer 400 com fields.status", rec.Code, rec.Body)
+	}
+}
+
+// Minhas ideias contra Postgres real: só as de quem pede, em todos os status, e 401 para visitante.
+func TestMine(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+	var authorID, otherID int64
+	err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID)
+	if err == nil {
+		err = pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Outro Aluno') RETURNING id`).Scan(&otherID)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	author, other := NewHandler(pool, loggedAs(authorID)), NewHandler(pool, loggedAs(otherID))
+
+	if rec := do(t, author.Mine, http.MethodGet, ""); rec.Code != 200 || strings.TrimSpace(rec.Body.String()) != `{"items":[]}` {
+		t.Fatalf("sem ideias: %d %s", rec.Code, rec.Body)
+	}
+	var mine []int64
+	for range 2 {
+		rec := do(t, author.Create, http.MethodPost, validBody)
+		if rec.Code != 201 {
+			t.Fatalf("POST: %d (%s)", rec.Code, rec.Body)
+		}
+		mine = append(mine, decode[ideaResponse](t, rec).ID)
+	}
+	if rec := do(t, other.Create, http.MethodPost, validBody); rec.Code != 201 {
+		t.Fatalf("POST do outro: %d (%s)", rec.Code, rec.Body)
+	}
+	// A primeira concluída continua na lista (o mural já não a mostra).
+	if rec := doIDBody(t, author.SetStatus, http.MethodPut, strconv.FormatInt(mine[0], 10), `{"status":"done"}`); rec.Code != 204 {
+		t.Fatalf("PUT status: %d (%s)", rec.Code, rec.Body)
+	}
+
+	items := decode[struct{ Items []ideaResponse }](t, do(t, author.Mine, http.MethodGet, "")).Items
+	if len(items) != 2 || items[0].ID != mine[1] || items[1].ID != mine[0] || items[1].Status != "done" {
+		t.Errorf("minhas ideias: %+v, quer [%d %d] com a segunda concluída", items, mine[1], mine[0])
+	}
+	if rec := do(t, NewHandler(pool, loggedAs(0)).Mine, http.MethodGet, ""); rec.Code != 401 || decode[errorResponse](t, rec).Error != "unauthenticated" {
+		t.Errorf("visitante: %d (%s), quer 401", rec.Code, rec.Body)
 	}
 }
 

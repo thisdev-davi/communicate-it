@@ -5,6 +5,8 @@ import { Suspense } from "react";
 import { Logo } from "./components/Logo";
 import "./globals.css";
 import styles from "./header.module.css";
+import { getMe } from "./me";
+import { Links, NavLinks } from "./nav-links";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 
@@ -18,6 +20,11 @@ export const metadata: Metadata = {
 
 // Aplica o tema salvo antes da primeira pintura (sem piscar o tema do sistema). Roda enquanto o navegador lê o <head>.
 const THEME_SCRIPT = `try{var t=localStorage.getItem("tema");if(t)document.documentElement.dataset.theme=t}catch(e){}`;
+
+// "Minhas ideias" só entra na navegação para quem está logado; a sessão só existe na requisição (por isso o Suspense).
+async function Nav() {
+  return <NavLinks loggedIn={!!(await getMe())} />;
+}
 
 // Cada página põe id="conteudo" no seu <main>, o alvo do "Pular para o conteúdo".
 // suppressHydrationWarning: o script acima pode pôr data-theme no <html> antes de o React hidratar.
@@ -37,6 +44,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/" className={styles.brand}>
               <Logo />
             </Link>
+            <nav aria-label="Principal" className={styles.nav}>
+              <Suspense fallback={<Links />}>
+                <Nav />
+              </Suspense>
+            </nav>
             <ThemeToggle />
             <Suspense fallback={null}>
               <UserMenu />

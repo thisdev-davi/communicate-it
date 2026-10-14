@@ -4,6 +4,8 @@ Objetivo único: o aluno logado clica em "Quero participar" e entra direto na li
 
 Mudou o contrato? Atualiza este arquivo **antes** do código.
 
+> **Atualizado pela [fatia 7](fatia-7-status.md):** o status agora é conferido. Só ideia `open` recebe interessados; as outras respondem `409 closed`, e a página esconde o botão.
+
 ## Fora desta fatia (de propósito)
 
 Aviso ao autor quando alguém entra (o bot do Discord é fase futura), travar novos interessados e trocar o status (fatia de status), o @ do autor para o interessado chamar, vagas preenchidas automaticamente, perfil com "ideias que participei".

@@ -27,6 +27,7 @@ var (
 		"web": true, "mobile": true, "ai": true, "data": true, "games": true,
 		"competitive_programming": true, "security": true, "iot": true, "other": true,
 	}
+	statuses = map[string]bool{"open": true, "in_progress": true, "done": true} // docs/contratos/fatia-7-status.md
 )
 
 type Handler struct {
@@ -48,6 +49,11 @@ type ideaRequest struct {
 	Slots       int    `json:"slots"`
 }
 
+// Corpo do PUT /status.
+type statusRequest struct {
+	Status string `json:"status"`
+}
+
 type authorResponse struct {
 	ID        int64   `json:"id"`
 	Name      string  `json:"name"`
@@ -64,6 +70,7 @@ type ideaResponse struct {
 	Status      string         `json:"status"`
 	Author      authorResponse `json:"author"`
 	CreatedAt   time.Time      `json:"created_at"`
+	DoneAt      *time.Time     `json:"done_at"` // quando foi concluída; null se não está concluída
 	// Quantos marcaram "quero participar" e se quem pede é um deles.
 	InterestCount int64 `json:"interest_count"`
 	Interested    bool  `json:"interested"`
@@ -91,8 +98,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, ok := decodeIdea(w, r)
-	if !ok {
+	var req ideaRequest
+	if !readBody(w, r, &req) {
 		return
 	}
 	row, err := h.q.CreateIdea(r.Context(), CreateIdeaParams{
@@ -116,8 +123,8 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	req, ok := decodeIdea(w, r)
-	if !ok {
+	var req ideaRequest
+	if !readBody(w, r, &req) {
 		return
 	}
 	row, err := h.q.UpdateIdea(r.Context(), UpdateIdeaParams{
@@ -152,18 +159,46 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// List devolve o mural: tudo para quem está logado, só as mais recentes para visitante.
+// SetStatus troca o status da ideia. Só o autor. Só ideia aberta recebe interessados (PutInterest),
+// então trocar o status é também o jeito de travar ou destravar a lista.
+func (h *Handler) SetStatus(w http.ResponseWriter, r *http.Request) {
+	id, ok := h.authorOf(w, r)
+	if !ok {
+		return
+	}
+	var req statusRequest
+	if !readBody(w, r, &req) {
+		return
+	}
+	if err := h.q.SetIdeaStatus(r.Context(), SetIdeaStatusParams{ID: id, Status: req.Status}); err != nil {
+		internalError(w, "set idea status", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// List devolve o mural (abertas e em andamento) ou, com ?status=done, a vitrine de concluídas.
+// Tudo para quem está logado, só as primeiras para visitante.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.userID(r)
 	if err != nil {
 		internalError(w, "session", err)
 		return
 	}
+	var done bool
+	switch r.URL.Query().Get("status") {
+	case "": // o mural; em Go o case não cai no próximo, então vazio é "não faz nada"
+	case "done":
+		done = true
+	default:
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "validation_failed", Fields: map[string]string{"status": "valor inválido"}})
+		return
+	}
 	var max *int32 // nil vira NULL no SQL: sem limite
 	if userID == 0 {
 		max = new(int32(previewSize)) // Go 1.26+: new aceita um valor e devolve o ponteiro para uma cópia dele
 	}
-	rows, err := h.q.ListIdeas(r.Context(), ListIdeasParams{Viewer: userID, Max: max})
+	rows, err := h.q.ListIdeas(r.Context(), ListIdeasParams{Viewer: userID, Done: done, Max: max})
 	if err != nil {
 		internalError(w, "list ideas", err)
 		return
@@ -171,6 +206,24 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	items := make([]ideaResponse, 0, len(rows)) // não-nil: lista vazia vira [] no JSON, não null
 	for _, row := range rows {
 		items = append(items, toResponse(row))
+	}
+	writeJSON(w, http.StatusOK, map[string][]ideaResponse{"items": items})
+}
+
+// Mine devolve todas as ideias de quem está logado, em qualquer status (a página "Minhas ideias").
+func (h *Handler) Mine(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.loggedIn(w, r)
+	if !ok {
+		return
+	}
+	rows, err := h.q.ListMyIdeas(r.Context(), userID)
+	if err != nil {
+		internalError(w, "list my ideas", err)
+		return
+	}
+	items := make([]ideaResponse, 0, len(rows)) // não-nil: lista vazia vira [] no JSON, não null
+	for _, row := range rows {
+		items = append(items, toResponse(ListIdeasRow(row)))
 	}
 	writeJSON(w, http.StatusOK, map[string][]ideaResponse{"items": items})
 }
@@ -212,6 +265,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 // PutInterest é o "quero participar": sem aprovação, a pessoa entra direto na lista. Repetir não muda nada.
+// Só ideia aberta recebe interessados.
 func (h *Handler) PutInterest(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.loggedIn(w, r)
 	if !ok {
@@ -222,7 +276,7 @@ func (h *Handler) PutInterest(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
 		return
 	}
-	authorID, err := h.q.GetIdeaAuthor(r.Context(), id)
+	idea, err := h.q.GetIdeaAuthor(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
 		return
@@ -231,8 +285,12 @@ func (h *Handler) PutInterest(w http.ResponseWriter, r *http.Request) {
 		internalError(w, "get idea author", err)
 		return
 	}
-	if authorID == userID {
+	if idea.AuthorID == userID {
 		writeJSON(w, http.StatusConflict, errorResponse{Error: "own_idea"})
+		return
+	}
+	if idea.Status != "open" { // em andamento ou concluída: a lista está travada
+		writeJSON(w, http.StatusConflict, errorResponse{Error: "closed"})
 		return
 	}
 	if err := h.q.AddInterest(r.Context(), AddInterestParams{IdeaID: id, UserID: userID}); err != nil {
@@ -283,7 +341,7 @@ func (h *Handler) authorOf(w http.ResponseWriter, r *http.Request) (id int64, ok
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
 		return 0, false
 	}
-	authorID, err := h.q.GetIdeaAuthor(r.Context(), id)
+	idea, err := h.q.GetIdeaAuthor(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
 		return 0, false
@@ -292,7 +350,7 @@ func (h *Handler) authorOf(w http.ResponseWriter, r *http.Request) (id int64, ok
 		internalError(w, "get idea author", err)
 		return 0, false
 	}
-	if authorID != userID {
+	if idea.AuthorID != userID {
 		writeJSON(w, http.StatusForbidden, errorResponse{Error: "not_author"})
 		return 0, false
 	}
@@ -305,22 +363,28 @@ func pathID(r *http.Request) (int64, bool) {
 	return id, err == nil && id > 0
 }
 
-// decodeIdea lê e valida o corpo do POST e do PUT. Com erro, já responde 400 ou 413 e devolve ok = false.
-func decodeIdea(w http.ResponseWriter, r *http.Request) (req ideaRequest, ok bool) {
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes)).Decode(&req); err != nil {
+// validator é todo corpo de requisição que sabe se limpar e se validar (ideaRequest, statusRequest).
+// Em Go a interface é implícita: basta o tipo ter o método validate, sem declarar que a implementa.
+type validator interface {
+	validate() map[string]string
+}
+
+// readBody lê o corpo JSON em req (um ponteiro) e valida. Com erro, já responde 400 ou 413 e devolve false.
+func readBody(w http.ResponseWriter, r *http.Request, req validator) bool {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes)).Decode(req); err != nil {
 		var tooBig *http.MaxBytesError
 		if errors.As(err, &tooBig) {
 			writeJSON(w, http.StatusRequestEntityTooLarge, errorResponse{Error: "body_too_large"})
-			return req, false
+			return false
 		}
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid_json"})
-		return req, false
+		return false
 	}
 	if fields := req.validate(); len(fields) > 0 {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "validation_failed", Fields: fields})
-		return req, false
+		return false
 	}
-	return req, true
+	return true
 }
 
 // validate limpa os campos de texto (trim) e devolve os erros por campo; vazio = válido.
@@ -338,6 +402,13 @@ func (req *ideaRequest) validate() map[string]string {
 	if req.Slots < 1 || req.Slots > 20 {
 		fields["slots"] = "deve ser entre 1 e 20"
 	}
+	return fields
+}
+
+func (req *statusRequest) validate() map[string]string {
+	req.Status = strings.TrimSpace(req.Status)
+	fields := map[string]string{}
+	CheckOption(fields, "status", req.Status, statuses)
 	return fields
 }
 
@@ -374,9 +445,18 @@ func toResponse(r ListIdeasRow) ideaResponse {
 		Status:        r.Status,
 		Author:        authorResponse{ID: r.AuthorID, Name: r.AuthorName, AvatarURL: r.AuthorAvatarUrl},
 		CreatedAt:     r.CreatedAt.UTC(),
+		DoneAt:        utc(r.DoneAt),
 		InterestCount: r.InterestCount,
 		Interested:    r.Interested,
 	}
+}
+
+// utc devolve a data em UTC, como o created_at; nil continua nil (vira null no JSON).
+func utc(t *time.Time) *time.Time {
+	if t == nil {
+		return nil
+	}
+	return new(t.UTC())
 }
 
 func internalError(w http.ResponseWriter, op string, err error) {

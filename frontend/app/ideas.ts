@@ -14,6 +14,7 @@ export type Idea = {
   status: string;
   author: { id: number; name: string; avatar_url: string | null };
   created_at: string;
+  done_at: string | null; // fatia 7 (docs/contratos/fatia-7-status.md): quando foi concluída
   interest_count: number; // fatia 5 (docs/contratos/fatia-5-quero-participar.md)
   interested: boolean; // quem pede está na lista
   interests?: Interest[]; // só vem para o autor
@@ -29,6 +30,13 @@ export type Interest = {
 export type ApiError = {
   error: string;
   fields?: Record<string, string>;
+};
+
+// Status são sempre "Aberta", "Em andamento" e "Concluída" (docs/DESIGN.md).
+export const STATUSES: Record<string, string> = {
+  open: "Aberta",
+  in_progress: "Em andamento",
+  done: "Concluída",
 };
 
 export const COURSES: Record<string, string> = {

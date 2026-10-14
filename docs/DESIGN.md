@@ -72,7 +72,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   | `users` | vagas |
   | `hand` | interessados |
   | `calendar` | data |
-  | `circle-check` | sucesso, "Você participa" |
+  | `circle-check` | sucesso, "Você participa", "concluída em" |
   | `circle-alert` | erro |
   | `sun` / `moon` | tema |
 
@@ -85,6 +85,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 
 - **Coluna da página:** conteúdo com no máximo 1040px, centralizado, com recuo lateral `space-6` (`space-4` no celular). Páginas de leitura e formulário (ideia, postar) usam a coluna mais estreita, de 760px.
 - **Cabeçalho:** a barra vai de ponta a ponta, mas o conteúdo dela (`.bar`) segue a coluna de 1040px. Logo, título da página e primeiro card começam na mesma linha vertical, e a última ação termina junto com a última coluna da grade.
+- **Navegação:** links no cabeçalho, colados no logo ("Mural", "Concluídos" e, só para quem está logado, "Minhas ideias"), com `aria-current="page"` na página atual, que ganha cor `primary` e fundo `primary-soft` (nunca só a cor). Barra no topo, sem menu lateral nem hambúrguer: no celular (até 600px), os links descem para uma segunda linha da barra.
 - **Topo do mural:** título e texto de apoio à esquerda; a ação da página ("Postar ideia") à direita, alinhada pela base. No celular, a ação desce.
 - **Voltar:** páginas internas começam com o link "Voltar ao mural". A página de editar volta para a ideia ("Voltar à ideia").
 
@@ -97,21 +98,25 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   - o que passar corta com "…", e o texto curto deixa o espaço reservado (`min-height`);
   - o rodapé fica sempre embaixo (`margin-top: auto`), e a grade estica os cards.
 - A etiqueta usa a sigla do curso (`COURSE_SHORT`: CC, ENG, ADS). A página da ideia mostra o nome inteiro.
-- Rodapé: foto e nome do autor (cortado com "…") e, embaixo, a linha de ícones (vagas, interessados, data).
+- Rodapé: foto e nome do autor (cortado com "…") e, embaixo, a linha de ícones (vagas, interessados, data). Na ideia concluída, a data é a da conclusão, escrita por extenso ("concluída em DD/MM", com `circle-check`) para não ser confundida com a postagem.
 - **O card não tem ação.** O título é um link esticado que torna o card inteiro clicável e leva à página da ideia, onde ficam as ações. Não aninhe botões ou links dentro do card.
 - Quem já participa vê a borda `accent` e o selo "Você participa" na linha do autor.
 
 ### Páginas e fluxos
 
 - **Mural (`/`):**
+  - só ideias abertas e em andamento; as concluídas vão para a vitrine;
   - o visitante vê a prévia de 3 ideias e o convite para entrar;
   - quem está logado vê tudo e o botão "Postar ideia";
   - logado sem curso vai para `/cadastro`.
+- **Concluídos (`/concluidas`):** a vitrine, com a mesma grade do mural e as concluídas mais recentes primeiro. O visitante vê a prévia de 3 e o convite para entrar. É onde o build in public vai entrar.
+- **Minhas ideias (`/minhas-ideias`):** só para quem está logado. Todas as ideias do aluno, em qualquer status, na mesma grade do mural, com "Postar ideia" no topo. Os controles ficam na página de cada ideia.
 - **Página da ideia (`/ideias/<id>`):**
   - o card inteiro (`full`), sem cortes;
-  - quem não é autor vê o "Quero participar", que vira "Interessado" (`aria-pressed`);
+  - quem não é autor vê o "Quero participar", que vira "Interessado" (`aria-pressed`), só enquanto a ideia está Aberta;
   - o interessado lê "Você está na lista. O autor vai te chamar no Discord.";
-  - o autor vê o painel "Sua ideia", com "Editar ideia" (`secondary`) e "Apagar ideia" (`danger`), e embaixo a seção "Interessados (N)" com "Chamar no Discord", que abre o perfil e copia a primeira mensagem;
+  - na ideia Em andamento ou Concluída, o botão some para todos, e quem não está na lista lê "Esta ideia não está recebendo novos interessados.";
+  - o autor vê o painel "Sua ideia": o grupo "Status" com três botões `sm` (o atual `primary` com `aria-pressed`, os outros `secondary`; o clique já salva) e a regra "Só ideias abertas recebem novos interessados.", depois "Editar ideia" (`secondary`) e "Apagar ideia" (`danger`), e embaixo a seção "Interessados (N)" com "Chamar no Discord", que abre o perfil e copia a primeira mensagem;
   - "Apagar ideia" confirma na caixa nativa do navegador (`confirm()`), que já é acessível, e depois volta ao mural;
   - ideia inexistente mostra "Ideia não encontrada".
 - **Postar (`/ideias/nova`):** só para quem está logado e tem curso. Depois do envio, vai para a página da ideia nova.

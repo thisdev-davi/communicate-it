@@ -1,4 +1,4 @@
--- Create, Update, List e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
+-- Create, Update, List, ListMy e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
 -- interest_count e interested dizem quantos marcaram "quero participar" e se quem pede (viewer) é um deles; viewer 0 = visitante.
 
 -- name: CreateIdea :one
@@ -8,25 +8,28 @@ WITH i AS (
     VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *
 )
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        0::bigint AS interest_count, false AS interested
 FROM i
 JOIN users u ON u.id = i.author_id;
 
 -- name: ListIdeas :many
+-- done escolhe a lista: false é o mural (abertas e em andamento), true é a vitrine (concluídas).
+-- A vitrine ordena pela conclusão; no mural done_at é sempre NULL, e a ordem cai na data de postagem.
 -- max NULL = sem limite (LIMIT NULL é o mesmo que não ter LIMIT); o visitante recebe só uma prévia.
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested
 FROM ideas i
 JOIN users u ON u.id = i.author_id
-ORDER BY i.created_at DESC, i.id DESC
+WHERE (i.status = 'done') = sqlc.arg('done')::bool
+ORDER BY i.done_at DESC NULLS LAST, i.created_at DESC, i.id DESC
 LIMIT sqlc.narg('max');
 
 -- name: GetIdea :one
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested
@@ -35,7 +38,8 @@ JOIN users u ON u.id = i.author_id
 WHERE i.id = sqlc.arg('id');
 
 -- name: GetIdeaAuthor :one
-SELECT author_id FROM ideas WHERE id = $1;
+-- O status vem junto: o "quero participar" só entra em ideia aberta.
+SELECT author_id, status FROM ideas WHERE id = $1;
 
 -- name: AddInterest :exec
 -- Repetir não dá erro nem duplica: a chave (idea_id, user_id) já existe e o insert vira nada.
@@ -61,7 +65,7 @@ WITH i AS (
     WHERE ideas.id = $1
     RETURNING *
 )
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        false AS interested
@@ -71,3 +75,21 @@ JOIN users u ON u.id = i.author_id;
 -- name: DeleteIdea :exec
 -- Os interessados vão junto: interests tem ON DELETE CASCADE.
 DELETE FROM ideas WHERE id = $1;
+
+-- name: SetIdeaStatus :exec
+-- done_at acompanha o status: preenchido ao concluir (repetir done mantém a data), null ao sair de done.
+UPDATE ideas
+SET status = sqlc.arg('status'),
+    done_at = CASE WHEN sqlc.arg('status') = 'done' THEN COALESCE(done_at, now()) END
+WHERE id = sqlc.arg('id');
+
+-- name: ListMyIdeas :many
+-- Todas as ideias de quem pede, em qualquer status. Mesmas colunas do ListIdeas; interested sai false (o autor não participa).
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
+       (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
+       false AS interested
+FROM ideas i
+JOIN users u ON u.id = i.author_id
+WHERE i.author_id = $1
+ORDER BY i.created_at DESC, i.id DESC;

@@ -31,9 +31,9 @@ const createIdea = `-- name: CreateIdea :one
 WITH i AS (
     INSERT INTO ideas (author_id, title, description, course, category, slots)
     VALUES ($1, $2, $3, $4, $5, $6)
-    RETURNING id, author_id, title, description, course, category, slots, status, created_at
+    RETURNING id, author_id, title, description, course, category, slots, status, created_at, done_at
 )
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        0::bigint AS interest_count, false AS interested
 FROM i
@@ -58,6 +58,7 @@ type CreateIdeaRow struct {
 	Slots           int32
 	Status          string
 	CreatedAt       time.Time
+	DoneAt          *time.Time
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -65,7 +66,7 @@ type CreateIdeaRow struct {
 	Interested      bool
 }
 
-// Create, Update, List e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
+// Create, Update, List, ListMy e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
 // interest_count e interested dizem quantos marcaram "quero participar" e se quem pede (viewer) é um deles; viewer 0 = visitante.
 // Ideia recém-criada ainda não tem interessados: as duas colunas saem fixas.
 func (q *Queries) CreateIdea(ctx context.Context, arg CreateIdeaParams) (CreateIdeaRow, error) {
@@ -87,6 +88,7 @@ func (q *Queries) CreateIdea(ctx context.Context, arg CreateIdeaParams) (CreateI
 		&i.Slots,
 		&i.Status,
 		&i.CreatedAt,
+		&i.DoneAt,
 		&i.AuthorID,
 		&i.AuthorName,
 		&i.AuthorAvatarUrl,
@@ -107,7 +109,7 @@ func (q *Queries) DeleteIdea(ctx context.Context, id int64) error {
 }
 
 const getIdea = `-- name: GetIdea :one
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested
@@ -130,6 +132,7 @@ type GetIdeaRow struct {
 	Slots           int32
 	Status          string
 	CreatedAt       time.Time
+	DoneAt          *time.Time
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -149,6 +152,7 @@ func (q *Queries) GetIdea(ctx context.Context, arg GetIdeaParams) (GetIdeaRow, e
 		&i.Slots,
 		&i.Status,
 		&i.CreatedAt,
+		&i.DoneAt,
 		&i.AuthorID,
 		&i.AuthorName,
 		&i.AuthorAvatarUrl,
@@ -159,29 +163,37 @@ func (q *Queries) GetIdea(ctx context.Context, arg GetIdeaParams) (GetIdeaRow, e
 }
 
 const getIdeaAuthor = `-- name: GetIdeaAuthor :one
-SELECT author_id FROM ideas WHERE id = $1
+SELECT author_id, status FROM ideas WHERE id = $1
 `
 
-func (q *Queries) GetIdeaAuthor(ctx context.Context, id int64) (int64, error) {
+type GetIdeaAuthorRow struct {
+	AuthorID int64
+	Status   string
+}
+
+// O status vem junto: o "quero participar" só entra em ideia aberta.
+func (q *Queries) GetIdeaAuthor(ctx context.Context, id int64) (GetIdeaAuthorRow, error) {
 	row := q.db.QueryRow(ctx, getIdeaAuthor, id)
-	var author_id int64
-	err := row.Scan(&author_id)
-	return author_id, err
+	var i GetIdeaAuthorRow
+	err := row.Scan(&i.AuthorID, &i.Status)
+	return i, err
 }
 
 const listIdeas = `-- name: ListIdeas :many
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested
 FROM ideas i
 JOIN users u ON u.id = i.author_id
-ORDER BY i.created_at DESC, i.id DESC
-LIMIT $2
+WHERE (i.status = 'done') = $2::bool
+ORDER BY i.done_at DESC NULLS LAST, i.created_at DESC, i.id DESC
+LIMIT $3
 `
 
 type ListIdeasParams struct {
 	Viewer int64
+	Done   bool
 	Max    *int32
 }
 
@@ -194,6 +206,7 @@ type ListIdeasRow struct {
 	Slots           int32
 	Status          string
 	CreatedAt       time.Time
+	DoneAt          *time.Time
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -201,9 +214,11 @@ type ListIdeasRow struct {
 	Interested      bool
 }
 
+// done escolhe a lista: false é o mural (abertas e em andamento), true é a vitrine (concluídas).
+// A vitrine ordena pela conclusão; no mural done_at é sempre NULL, e a ordem cai na data de postagem.
 // max NULL = sem limite (LIMIT NULL é o mesmo que não ter LIMIT); o visitante recebe só uma prévia.
 func (q *Queries) ListIdeas(ctx context.Context, arg ListIdeasParams) ([]ListIdeasRow, error) {
-	rows, err := q.db.Query(ctx, listIdeas, arg.Viewer, arg.Max)
+	rows, err := q.db.Query(ctx, listIdeas, arg.Viewer, arg.Done, arg.Max)
 	if err != nil {
 		return nil, err
 	}
@@ -220,6 +235,7 @@ func (q *Queries) ListIdeas(ctx context.Context, arg ListIdeasParams) ([]ListIde
 			&i.Slots,
 			&i.Status,
 			&i.CreatedAt,
+			&i.DoneAt,
 			&i.AuthorID,
 			&i.AuthorName,
 			&i.AuthorAvatarUrl,
@@ -277,6 +293,70 @@ func (q *Queries) ListInterests(ctx context.Context, ideaID int64) ([]ListIntere
 	return items, nil
 }
 
+const listMyIdeas = `-- name: ListMyIdeas :many
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
+       (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
+       false AS interested
+FROM ideas i
+JOIN users u ON u.id = i.author_id
+WHERE i.author_id = $1
+ORDER BY i.created_at DESC, i.id DESC
+`
+
+type ListMyIdeasRow struct {
+	ID              int64
+	Title           string
+	Description     string
+	Course          string
+	Category        string
+	Slots           int32
+	Status          string
+	CreatedAt       time.Time
+	DoneAt          *time.Time
+	AuthorID        int64
+	AuthorName      string
+	AuthorAvatarUrl *string
+	InterestCount   int64
+	Interested      bool
+}
+
+// Todas as ideias de quem pede, em qualquer status. Mesmas colunas do ListIdeas; interested sai false (o autor não participa).
+func (q *Queries) ListMyIdeas(ctx context.Context, authorID int64) ([]ListMyIdeasRow, error) {
+	rows, err := q.db.Query(ctx, listMyIdeas, authorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMyIdeasRow
+	for rows.Next() {
+		var i ListMyIdeasRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.Course,
+			&i.Category,
+			&i.Slots,
+			&i.Status,
+			&i.CreatedAt,
+			&i.DoneAt,
+			&i.AuthorID,
+			&i.AuthorName,
+			&i.AuthorAvatarUrl,
+			&i.InterestCount,
+			&i.Interested,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeInterest = `-- name: RemoveInterest :exec
 DELETE FROM interests WHERE idea_id = $1 AND user_id = $2
 `
@@ -291,13 +371,31 @@ func (q *Queries) RemoveInterest(ctx context.Context, arg RemoveInterestParams) 
 	return err
 }
 
+const setIdeaStatus = `-- name: SetIdeaStatus :exec
+UPDATE ideas
+SET status = $1,
+    done_at = CASE WHEN $1 = 'done' THEN COALESCE(done_at, now()) END
+WHERE id = $2
+`
+
+type SetIdeaStatusParams struct {
+	Status string
+	ID     int64
+}
+
+// done_at acompanha o status: preenchido ao concluir (repetir done mantém a data), null ao sair de done.
+func (q *Queries) SetIdeaStatus(ctx context.Context, arg SetIdeaStatusParams) error {
+	_, err := q.db.Exec(ctx, setIdeaStatus, arg.Status, arg.ID)
+	return err
+}
+
 const updateIdea = `-- name: UpdateIdea :one
 WITH i AS (
     UPDATE ideas SET title = $2, description = $3, course = $4, category = $5, slots = $6
     WHERE ideas.id = $1
-    RETURNING id, author_id, title, description, course, category, slots, status, created_at
+    RETURNING id, author_id, title, description, course, category, slots, status, created_at, done_at
 )
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        false AS interested
@@ -323,6 +421,7 @@ type UpdateIdeaRow struct {
 	Slots           int32
 	Status          string
 	CreatedAt       time.Time
+	DoneAt          *time.Time
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -351,6 +450,7 @@ func (q *Queries) UpdateIdea(ctx context.Context, arg UpdateIdeaParams) (UpdateI
 		&i.Slots,
 		&i.Status,
 		&i.CreatedAt,
+		&i.DoneAt,
 		&i.AuthorID,
 		&i.AuthorName,
 		&i.AuthorAvatarUrl,
