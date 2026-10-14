@@ -74,6 +74,8 @@ type ideaResponse struct {
 	// Quantos marcaram "quero participar" e se quem pede é um deles.
 	InterestCount int64 `json:"interest_count"`
 	Interested    bool  `json:"interested"`
+	// Os primeiros interessados (id, nome e foto), já em JSON: o banco monta, a API repassa sem decodificar.
+	InterestFaces json.RawMessage `json:"interest_faces"`
 	// Só o autor recebe a lista. omitzero (Go 1.24+) tira só o nil: para quem não é autor o campo some,
 	// e o autor sem interessados recebe [] (omitempty tiraria os dois).
 	Interests []interestResponse `json:"interests,omitzero"`
@@ -448,6 +450,7 @@ func toResponse(r ListIdeasRow) ideaResponse {
 		DoneAt:        utc(r.DoneAt),
 		InterestCount: r.InterestCount,
 		Interested:    r.Interested,
+		InterestFaces: r.InterestFaces, // []byte vira json.RawMessage direto: os dois são []byte por baixo
 	}
 }
 
