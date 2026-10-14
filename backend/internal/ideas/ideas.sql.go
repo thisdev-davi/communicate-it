@@ -35,7 +35,7 @@ WITH i AS (
 )
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
-       0::bigint AS interest_count, false AS interested
+       0::bigint AS interest_count, false AS interested, '[]'::json AS interest_faces
 FROM i
 JOIN users u ON u.id = i.author_id
 `
@@ -64,10 +64,12 @@ type CreateIdeaRow struct {
 	AuthorAvatarUrl *string
 	InterestCount   int64
 	Interested      bool
+	InterestFaces   []byte
 }
 
 // Create, Update, List, ListMy e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
 // interest_count e interested dizem quantos marcaram "quero participar" e se quem pede (viewer) é um deles; viewer 0 = visitante.
+// interest_faces são os 8 primeiros interessados (id, nome e foto) em JSON, na ordem de chegada; o visitante recebe [].
 // Ideia recém-criada ainda não tem interessados: as duas colunas saem fixas.
 func (q *Queries) CreateIdea(ctx context.Context, arg CreateIdeaParams) (CreateIdeaRow, error) {
 	row := q.db.QueryRow(ctx, createIdea,
@@ -94,6 +96,7 @@ func (q *Queries) CreateIdea(ctx context.Context, arg CreateIdeaParams) (CreateI
 		&i.AuthorAvatarUrl,
 		&i.InterestCount,
 		&i.Interested,
+		&i.InterestFaces,
 	)
 	return i, err
 }
@@ -112,7 +115,10 @@ const getIdea = `-- name: GetIdea :one
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
-       EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested
+       EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested,
+       (SELECT coalesce(json_agg(json_build_object('id', f.id, 'name', f.name, 'avatar_url', f.avatar_url) ORDER BY f.created_at, f.id), '[]')
+        FROM (SELECT u2.id, u2.name, u2.avatar_url, n.created_at FROM interests n JOIN users u2 ON u2.id = n.user_id
+              WHERE n.idea_id = i.id ORDER BY n.created_at, n.user_id LIMIT 8) f)::json AS interest_faces
 FROM ideas i
 JOIN users u ON u.id = i.author_id
 WHERE i.id = $2
@@ -138,6 +144,7 @@ type GetIdeaRow struct {
 	AuthorAvatarUrl *string
 	InterestCount   int64
 	Interested      bool
+	InterestFaces   []byte
 }
 
 func (q *Queries) GetIdea(ctx context.Context, arg GetIdeaParams) (GetIdeaRow, error) {
@@ -158,6 +165,7 @@ func (q *Queries) GetIdea(ctx context.Context, arg GetIdeaParams) (GetIdeaRow, e
 		&i.AuthorAvatarUrl,
 		&i.InterestCount,
 		&i.Interested,
+		&i.InterestFaces,
 	)
 	return i, err
 }
@@ -183,7 +191,10 @@ const listIdeas = `-- name: ListIdeas :many
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
-       EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested
+       EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested,
+       (SELECT coalesce(json_agg(json_build_object('id', f.id, 'name', f.name, 'avatar_url', f.avatar_url) ORDER BY f.created_at, f.id), '[]')
+        FROM (SELECT u2.id, u2.name, u2.avatar_url, n.created_at FROM interests n JOIN users u2 ON u2.id = n.user_id
+              WHERE n.idea_id = i.id AND $1 <> 0 ORDER BY n.created_at, n.user_id LIMIT 8) f)::json AS interest_faces
 FROM ideas i
 JOIN users u ON u.id = i.author_id
 WHERE (i.status = 'done') = $2::bool
@@ -212,6 +223,7 @@ type ListIdeasRow struct {
 	AuthorAvatarUrl *string
 	InterestCount   int64
 	Interested      bool
+	InterestFaces   []byte
 }
 
 // done escolhe a lista: false é o mural (abertas e em andamento), true é a vitrine (concluídas).
@@ -241,6 +253,7 @@ func (q *Queries) ListIdeas(ctx context.Context, arg ListIdeasParams) ([]ListIde
 			&i.AuthorAvatarUrl,
 			&i.InterestCount,
 			&i.Interested,
+			&i.InterestFaces,
 		); err != nil {
 			return nil, err
 		}
@@ -297,7 +310,10 @@ const listMyIdeas = `-- name: ListMyIdeas :many
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
-       false AS interested
+       false AS interested,
+       (SELECT coalesce(json_agg(json_build_object('id', f.id, 'name', f.name, 'avatar_url', f.avatar_url) ORDER BY f.created_at, f.id), '[]')
+        FROM (SELECT u2.id, u2.name, u2.avatar_url, n.created_at FROM interests n JOIN users u2 ON u2.id = n.user_id
+              WHERE n.idea_id = i.id ORDER BY n.created_at, n.user_id LIMIT 8) f)::json AS interest_faces
 FROM ideas i
 JOIN users u ON u.id = i.author_id
 WHERE i.author_id = $1
@@ -319,6 +335,7 @@ type ListMyIdeasRow struct {
 	AuthorAvatarUrl *string
 	InterestCount   int64
 	Interested      bool
+	InterestFaces   []byte
 }
 
 // Todas as ideias de quem pede, em qualquer status. Mesmas colunas do ListIdeas; interested sai false (o autor não participa).
@@ -346,6 +363,7 @@ func (q *Queries) ListMyIdeas(ctx context.Context, authorID int64) ([]ListMyIdea
 			&i.AuthorAvatarUrl,
 			&i.InterestCount,
 			&i.Interested,
+			&i.InterestFaces,
 		); err != nil {
 			return nil, err
 		}
@@ -398,7 +416,10 @@ WITH i AS (
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
-       false AS interested
+       false AS interested,
+       (SELECT coalesce(json_agg(json_build_object('id', f.id, 'name', f.name, 'avatar_url', f.avatar_url) ORDER BY f.created_at, f.id), '[]')
+        FROM (SELECT u2.id, u2.name, u2.avatar_url, n.created_at FROM interests n JOIN users u2 ON u2.id = n.user_id
+              WHERE n.idea_id = i.id ORDER BY n.created_at, n.user_id LIMIT 8) f)::json AS interest_faces
 FROM i
 JOIN users u ON u.id = i.author_id
 `
@@ -427,6 +448,7 @@ type UpdateIdeaRow struct {
 	AuthorAvatarUrl *string
 	InterestCount   int64
 	Interested      bool
+	InterestFaces   []byte
 }
 
 // Troca os campos do postar. O autor não participa da própria ideia, então interested sai fixo.
@@ -456,6 +478,7 @@ func (q *Queries) UpdateIdea(ctx context.Context, arg UpdateIdeaParams) (UpdateI
 		&i.AuthorAvatarUrl,
 		&i.InterestCount,
 		&i.Interested,
+		&i.InterestFaces,
 	)
 	return i, err
 }
