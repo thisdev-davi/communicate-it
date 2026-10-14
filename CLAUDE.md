@@ -50,9 +50,10 @@ backend/
 
 1. Davi roda o `grill-me` sobre a fatia; o resultado vira a especificação do ticket.
 2. O agente implementa contra a especificação e o contrato, com Ponytail ativo.
-3. Antes de abrir o PR, rodar `/ponytail-review` no diff e aplicar o que fizer sentido.
-4. Abrir o PR com: o que foi feito, contagem aproximada de linhas de lógica e **as decisões de Go não óbvias explicadas em uma frase cada** — o Davi está aprendendo Go e o PR também é material de estudo.
-5. Davi revisa e decide o merge.
+3. Mudou tela? Testar no navegador com o **Playwright CLI** (seção "Testar no navegador"): o fluxo da fatia, os dois temas e a tela estreita, com screenshot do resultado. Teste que passa só no `go test` e no `npm run build` não conta como tela verificada.
+4. Antes de abrir o PR, rodar `/ponytail-review` no diff e aplicar o que fizer sentido.
+5. Abrir o PR com: o que foi feito, contagem aproximada de linhas de lógica e **as decisões de Go não óbvias explicadas em uma frase cada** — o Davi está aprendendo Go e o PR também é material de estudo.
+6. Davi revisa e decide o merge.
 
 ## Skills
 
@@ -135,3 +136,24 @@ cd frontend && npx next typegen && npx tsc --noEmit && npm run lint && npm run b
 ```
 
 O front usa `API_URL` (padrão `http://localhost:8090`) para achar a API Go.
+
+### Testar no navegador (Playwright CLI)
+
+O agente testa as telas com o [Playwright CLI](https://github.com/microsoft/playwright-cli) (`@playwright/cli`), com versão fixa e sem instalar nada global. Cada comando fala com o mesmo navegador headless, que guarda cookies entre as chamadas. Os arquivos (snapshots, screenshots, logs) ficam em `.playwright-cli/`, fora do git.
+
+```sh
+# API e front rodando, banco local com o seed (que cria a sessão fixa do "Usuário de Teste")
+npx -y @playwright/cli@0.1.22 open http://localhost:3000
+npx -y @playwright/cli@0.1.22 cookie-set session sessao-local-de-teste --domain=localhost --path=/   # entra logado
+npx -y @playwright/cli@0.1.22 goto http://localhost:3000/ideias/1
+npx -y @playwright/cli@0.1.22 snapshot                      # árvore da página com as refs (e12...) para clicar
+npx -y @playwright/cli@0.1.22 click e12
+npx -y @playwright/cli@0.1.22 set-color-scheme dark         # e "light" para o outro tema
+npx -y @playwright/cli@0.1.22 resize 390 844                # tela de celular
+npx -y @playwright/cli@0.1.22 screenshot --full-page --filename=.playwright-cli/ideia.png
+npx -y @playwright/cli@0.1.22 close
+```
+
+- `npx -y @playwright/cli@0.1.22 --help` lista todos os comandos.
+- Dado de teste é fictício e só no banco local (regra 7). Para cenários com outros usuários (interessados, outro autor), insira usuários e sessões fictícios no banco local e apague no fim do teste.
+- O token `sessao-local-de-teste` é público: nunca crie essa sessão fora do banco local.
