@@ -19,7 +19,19 @@
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
-    color 0.15s ease;
+    color 0.15s ease,
+    transform 0.1s ease;
+}
+
+/* Resposta ao clique: o botão afunda um pouco enquanto está pressionado. */
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 .md {
@@ -45,6 +57,10 @@
   background: var(--primary-hover);
 }
 
+.pill {
+  border-radius: var(--radius-full);
+}
+
 /* O convite para entrar em algo ("Quero participar"): no máximo um por card. */
 .accent {
   background: var(--accent);
@@ -53,6 +69,17 @@
 
 .accent:hover {
   background: var(--accent-hover);
+}
+
+/* Quem já entrou ("Interessado"): o par do selo "Você participa", com a borda do card de quem participa. */
+.joined {
+  background: var(--accent-soft);
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.joined:hover {
+  background: var(--surface-raised);
 }
 
 .secondary {
@@ -66,13 +93,15 @@
   background: var(--primary-soft);
 }
 
+/* Só na barra do topo (tema e Sair): o mesmo hover dos links da navegação. O primary-soft fica só para a página atual. */
 .ghost {
   background: transparent;
-  color: var(--primary);
+  color: var(--ink-muted);
 }
 
 .ghost:hover {
-  background: var(--primary-soft);
+  background: var(--surface-sunken);
+  color: var(--ink);
 }
 
 /* Ação que destrói ("Apagar ideia"): o par danger sobre danger-soft do design system. */

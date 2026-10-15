@@ -17,7 +17,14 @@ export type Idea = {
   done_at: string | null; // fatia 7 (docs/contratos/fatia-7-status.md): quando foi concluída
   interest_count: number; // fatia 5 (docs/contratos/fatia-5-quero-participar.md)
   interested: boolean; // quem pede está na lista
+  interest_faces: Face[]; // os 8 primeiros interessados; [] para visitante
   interests?: Interest[]; // só vem para o autor
+};
+
+export type Face = {
+  id: number;
+  name: string;
+  avatar_url: string | null;
 };
 
 export type Interest = {

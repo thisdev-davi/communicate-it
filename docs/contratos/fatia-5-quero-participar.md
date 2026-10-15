@@ -5,6 +5,8 @@ Objetivo único: o aluno logado clica em "Quero participar" e entra direto na li
 Mudou o contrato? Atualiza este arquivo **antes** do código.
 
 > **Atualizado pela [fatia 7](fatia-7-status.md):** o status agora é conferido. Só ideia `open` recebe interessados; as outras respondem `409 closed`, e a página esconde o botão.
+>
+> **Atualizado em "rostos dos interessados":** todas as respostas com ideias ganham `interest_faces`, a foto e o nome dos primeiros interessados, para quem está logado (seção [Rostos dos interessados](#rostos-dos-interessados)).
 
 ## Fora desta fatia (de propósito)
 
@@ -16,7 +18,7 @@ Aviso ao autor quando alguém entra (o bot do Discord é fase futura), travar no
 - O interesse **não ocupa vaga** e não trava a ideia: "precisa de N pessoas" continua só informativo.
 - Dá para desistir: o botão alterna.
 - O autor não participa da própria ideia.
-- A lista de interessados (com o `discord_id`) só vai para o autor; os outros veem só o número.
+- A lista completa de interessados (com o `discord_id`) só vai para o autor. Quem está logado vê o número e os rostos dos primeiros (`interest_faces`, sem `discord_id`); o visitante vê só o número.
 - O status não é conferido nesta fatia: hoje toda ideia está aberta. Travar entra com a troca de status.
 
 ## Banco
@@ -75,11 +77,29 @@ Ganha `interest_count` e `interested`, como no mural. Quando quem chama é o **a
 - Autor sem interessados recebe `"interests": []`.
 - `avatar_url` e `discord_id` podem ser `null`.
 
+### Rostos dos interessados
+
+Todo objeto de ideia (`GET /api/ideas`, `GET /api/ideas/{id}`, `GET /api/me/ideas`, `POST` e `PUT /api/ideas/{id}`) ganha:
+
+```json
+{
+  "interest_faces": [
+    { "id": 7, "name": "Ana Ribeiro", "avatar_url": "https://cdn.discordapp.com/avatars/…png" }
+  ]
+}
+```
+
+- Os 8 primeiros interessados, em ordem de chegada (a mesma da lista do autor). O total continua em `interest_count`.
+- Sem `discord_id`: para chamar alguém, só o autor, pela lista dele.
+- Visitante recebe sempre `[]`: o mural aberto mostra o número, não as pessoas.
+- `avatar_url` pode ser `null`.
+
 ## Front
 
 - O card do mural **não tem ação**: para participar, o aluno abre a ideia (o card inteiro leva à página da [fatia 4](fatia-4-pagina-da-ideia.md)). No card, quem já está na ideia vê o selo "Você participa" ao lado do status e a borda `accent`.
 - Botão "Quero participar" (`accent`) só na página da ideia. Depois do clique, vira "Interessado" (`secondary`, `aria-pressed="true"`); clicar de novo desiste. Não aparece para visitante nem para o autor.
 - Depois de marcar ou desmarcar, o front pede a página de novo ao servidor (`router.refresh()`), que traz o contador e o estado atualizados. Sessão expirada (`401`) vai para `/login`.
+- Rostos, como a lista de contribuidores do GitHub: no card, até 3 fotos sobrepostas antes de "N interessados", com "+N" para o resto; na página da ideia, até 8. Sem foto, as iniciais.
 - Card e página mostram "Precisa de N pessoas · M interessados" numa linha e "postada em DD/MM" na de baixo.
 - Página da ideia, para quem é interessado: "Você está na lista. O autor vai te chamar no Discord."
 - Página da ideia, para o autor: seção "Interessados (N)", com foto, nome e o link "Chamar no Discord" de cada pessoa. Sem interessados: "Ninguém se interessou ainda."

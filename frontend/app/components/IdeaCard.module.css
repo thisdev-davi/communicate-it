@@ -137,7 +137,8 @@
   border-top: 1px solid var(--line);
 }
 
-/* Autor à esquerda; à direita, o selo (mural) ou o botão (página). Em tela estreita, o botão desce. */
+/* Autor à esquerda; à direita, os rostos e o selo (mural) ou o botão (página). O autor guarda 140px para o nome:
+   se a direita não couber ao lado, ela desce para a linha de baixo. */
 .byline {
   display: flex;
   flex-wrap: wrap;
@@ -148,7 +149,7 @@
 
 .who {
   display: flex;
-  flex: 1;
+  flex: 1 1 140px;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
@@ -224,4 +225,42 @@
 .done {
   background: var(--status-done-soft);
   color: var(--status-done);
+}
+
+.side {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Rostos dos interessados: fotos de 24px sobrepostas, cada uma com um anel da cor do card para separar da vizinha.
+   A sobreposição é pequena (4px) para não cobrir as iniciais de quem não tem foto. O seletor vence o 28px do Avatar. */
+.faces {
+  display: flex;
+  flex: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.faces li + li {
+  margin-left: -4px;
+}
+
+.faces li > *,
+.more {
+  width: 24px;
+  height: 24px;
+  box-shadow: 0 0 0 2px var(--surface-raised);
+  font-size: 10px;
+}
+
+.more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font-weight: 700;
 }

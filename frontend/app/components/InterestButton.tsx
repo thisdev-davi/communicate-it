@@ -12,6 +12,7 @@ export function InterestButton({ ideaId, interested }: { ideaId: number; interes
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [failed, setFailed] = useState(false);
+  const [joined, setJoined] = useState(false); // entrou agora, neste clique: só então o check anima (não a cada visita)
 
   function toggle() {
     setFailed(false);
@@ -29,13 +30,23 @@ export function InterestButton({ ideaId, interested }: { ideaId: number; interes
         setFailed(true);
         return;
       }
+      setJoined(!interested);
       startTransition(() => router.refresh());
     });
   }
 
   return (
     <div className={styles.action}>
-      <Button variant={interested ? "secondary" : "accent"} aria-pressed={interested} disabled={pending} onClick={toggle}>
+      {/* A mão levantada (o ícone dos interessados) vira o check de quem entrou. */}
+      <Button
+        variant={interested ? "joined" : "accent"}
+        pill
+        icon={interested ? "check" : "hand"}
+        className={interested && joined ? styles.pop : undefined}
+        aria-pressed={interested}
+        disabled={pending}
+        onClick={toggle}
+      >
         {interested ? "Interessado" : "Quero participar"}
       </Button>
       {failed && (

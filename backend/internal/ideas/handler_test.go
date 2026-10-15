@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -318,6 +319,18 @@ func TestInterests(t *testing.T) {
 		}
 	}
 
+	// Rostos: quem está logado vê a foto e o nome, sem o discord_id; o visitante, só o número.
+	wantFaces := fmt.Sprintf(`"interest_faces":[{"id":%d,"name":"Ana Teste","avatar_url":null}]`, fanID)
+	if rec := do(t, author.List, http.MethodGet, ""); !strings.Contains(rec.Body.String(), wantFaces) {
+		t.Errorf("rostos no mural: %s, quer %s", rec.Body, wantFaces)
+	}
+	if rec := doID(t, author.Get, http.MethodGet, id); !strings.Contains(rec.Body.String(), wantFaces) {
+		t.Errorf("rostos na página: %s, quer %s", rec.Body, wantFaces)
+	}
+	if rec := do(t, NewHandler(pool, loggedAs(0)).List, http.MethodGet, ""); !strings.Contains(rec.Body.String(), `"interest_count":1,"interested":false,"interest_faces":[]`) {
+		t.Errorf("visitante recebeu rostos: %s", rec.Body)
+	}
+
 	// Página: só a autora recebe a lista, com o discord_id; para os outros o campo nem vem no JSON.
 	rec = doID(t, fan.Get, http.MethodGet, id)
 	if strings.Contains(rec.Body.String(), `"interests"`) {
@@ -335,7 +348,7 @@ func TestInterests(t *testing.T) {
 		}
 	}
 	rec = doID(t, author.Get, http.MethodGet, id)
-	if !strings.Contains(rec.Body.String(), `"interest_count":0,"interested":false,"interests":[]`) {
+	if !strings.Contains(rec.Body.String(), `"interest_count":0,"interested":false,"interest_faces":[],"interests":[]`) {
 		t.Errorf("depois de desistir: %s", rec.Body)
 	}
 }
@@ -395,6 +408,7 @@ func TestUpdateAndDelete(t *testing.T) {
 	want := created
 	want.Title, want.Description, want.Course, want.Category, want.Slots = "Carona solidária", "Agora com mapa", "ads", "web", 1
 	want.InterestCount = 1
+	want.InterestFaces = json.RawMessage(fmt.Sprintf(`[{"id":%d,"name":"Outro Aluno","avatar_url":null}]`, otherID))
 	if got := decode[ideaResponse](t, rec); !reflect.DeepEqual(got, want) {
 		t.Errorf("PUT devolveu %+v, quer %+v", got, want)
 	}

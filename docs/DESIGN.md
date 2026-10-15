@@ -52,7 +52,8 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 
 - Escala de 4px: `space-1` a `space-8` (4 a 64).
 - Cards têm padding `space-5`, gap interno `space-3`, e `space-6` entre cards na grade.
-- Raios: `radius-sm` em botões, campos e selos; `radius-md` em cards e avisos; `radius-lg` no cartão de login; `radius-full` em avatares.
+- Raios: `radius-sm` em botões, campos e selos; `radius-md` em cards e avisos; `radius-lg` no cartão de login; `radius-full` em avatares e nas pílulas.
+- **Pílula** (`Button` com `pill`, cantos `radius-full`): o "Quero participar", os botões do painel "Sua ideia", o seletor de status e tudo o que é clicável na barra do topo. Os outros botões ("Postar ideia", formulários, login) continuam com `radius-sm`.
 - Sombra: `shadow-card` em todo card (classe global `card`). Só a cor da sombra muda com o tema.
 
 ### Grafismo e ícones
@@ -73,6 +74,9 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   | `hand` | interessados |
   | `calendar` | data |
   | `circle-check` | sucesso, "Você participa", "concluída em" |
+  | `hand` | também no "Quero participar" (a mão levantada) |
+  | `check` | "Interessado" (a mão vira check ao entrar) |
+  | `door-open` / `hammer` / `flag` | status Aberta / Em andamento / Concluída, no seletor do autor |
   | `circle-alert` | erro |
   | `sun` / `moon` | tema |
 
@@ -84,8 +88,8 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 ### Layout
 
 - **Coluna da página:** conteúdo com no máximo 1040px, centralizado, com recuo lateral `space-6` (`space-4` no celular). Páginas de leitura e formulário (ideia, postar) usam a coluna mais estreita, de 760px.
-- **Cabeçalho:** a barra vai de ponta a ponta, mas o conteúdo dela (`.bar`) segue a coluna de 1040px. Logo, título da página e primeiro card começam na mesma linha vertical, e a última ação termina junto com a última coluna da grade.
-- **Navegação:** links no cabeçalho, colados no logo ("Mural", "Concluídos" e, só para quem está logado, "Minhas ideias"), com `aria-current="page"` na página atual, que ganha cor `primary` e fundo `primary-soft` (nunca só a cor). Barra no topo, sem menu lateral nem hambúrguer: no celular (até 600px), os links descem para uma segunda linha da barra.
+- **Cabeçalho:** a barra e o conteúdo dela vão de ponta a ponta, com recuo `space-6` (`space-4` no celular): o logo fica colado à esquerda da tela e o usuário à direita, fora da coluna do conteúdo.
+- **Navegação:** links no cabeçalho, colados no logo ("Mural", "Concluídos" e, só para quem está logado, "Minhas ideias"), com `aria-current="page"` na página atual, que ganha cor `primary` e fundo `primary-soft` (nunca só a cor). Links e botões da barra são pílulas com o mesmo hover: texto `ink` sobre `surface-sunken`, que não se confunde com a página atual. Barra no topo, sem menu lateral nem hambúrguer: no celular (até 600px), os links descem para uma segunda linha da barra.
 - **Topo do mural:** título e texto de apoio à esquerda; a ação da página ("Postar ideia") à direita, alinhada pela base. No celular, a ação desce.
 - **Voltar:** páginas internas começam com o link "Voltar ao mural". A página de editar volta para a ideia ("Voltar à ideia").
 
@@ -98,9 +102,10 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   - o que passar corta com "…", e o texto curto deixa o espaço reservado (`min-height`);
   - o rodapé fica sempre embaixo (`margin-top: auto`), e a grade estica os cards.
 - A etiqueta usa a sigla do curso (`COURSE_SHORT`: CC, ENG, ADS). A página da ideia mostra o nome inteiro.
-- Rodapé: foto e nome do autor (cortado com "…") e, embaixo, a linha de ícones (vagas, interessados, data). Na ideia concluída, a data é a da conclusão, escrita por extenso ("concluída em DD/MM", com `circle-check`) para não ser confundida com a postagem.
+- Rodapé: foto e nome do autor (cortado com "…"), à direita os rostos dos interessados e, embaixo, a linha de ícones (vagas, interessados, data). Na ideia concluída, a data é a da conclusão, escrita por extenso ("concluída em DD/MM", com `circle-check`) para não ser confundida com a postagem.
 - **O card não tem ação.** O título é um link esticado que torna o card inteiro clicável e leva à página da ideia, onde ficam as ações. Não aninhe botões ou links dentro do card.
 - Quem já participa vê a borda `accent` e o selo "Você participa" na linha do autor.
+- **Rostos dos interessados**, como a lista de contribuidores do GitHub: fotos de 24px sobrepostas (4px), com um anel da cor do card; até 3 no card e 8 na página, e "+N" para o resto. Sem foto, as iniciais. Só quem está logado vê; o visitante vê o número. O autor guarda 140px para o nome: se rostos e selo não couberem ao lado, descem para a linha de baixo.
 
 ### Páginas e fluxos
 
@@ -113,10 +118,14 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - **Minhas ideias (`/minhas-ideias`):** só para quem está logado. Todas as ideias do aluno, em qualquer status, na mesma grade do mural, com "Postar ideia" no topo. Os controles ficam na página de cada ideia.
 - **Página da ideia (`/ideias/<id>`):**
   - o card inteiro (`full`), sem cortes;
-  - quem não é autor vê o "Quero participar", que vira "Interessado" (`aria-pressed`), só enquanto a ideia está Aberta;
+  - quem não é autor vê o "Quero participar" (pílula `accent` com a mão levantada), que vira "Interessado" (pílula `joined`: `accent-soft` com borda `accent`, ícone `check`, `aria-pressed`), só enquanto a ideia está Aberta. O check entra com um pulo curto só no clique, não a cada visita, e sem animação com `prefers-reduced-motion`;
   - o interessado lê "Você está na lista. O autor vai te chamar no Discord.";
   - na ideia Em andamento ou Concluída, o botão some para todos, e quem não está na lista lê "Esta ideia não está recebendo novos interessados.";
-  - o autor vê o painel "Sua ideia": o grupo "Status" com três botões `sm` (o atual `primary` com `aria-pressed`, os outros `secondary`; o clique já salva) e a regra "Só ideias abertas recebem novos interessados.", depois "Editar ideia" (`secondary`) e "Apagar ideia" (`danger`), e embaixo a seção "Interessados (N)" com "Chamar no Discord", que abre o perfil e copia a primeira mensagem;
+  - o autor vê o painel "Sua ideia":
+    - o grupo "Status", um seletor segmentado: trilha `surface-sunken` em pílula com os três status, cada um com o seu ícone. O marcado (`aria-pressed`) sobe com `shadow-card` e ganha o par do selo do card (`status-*` sobre `status-*-soft`), e o clique já salva. Até 420px, os três empilham;
+    - a regra "Só ideias abertas recebem novos interessados.";
+    - "Editar ideia" (`secondary`) e "Apagar ideia" (`danger`), em pílula;
+  - embaixo, a seção "Interessados (N)" com "Chamar no Discord", que abre o perfil e copia a primeira mensagem;
   - "Apagar ideia" confirma na caixa nativa do navegador (`confirm()`), que já é acessível, e depois volta ao mural;
   - ideia inexistente mostra "Ideia não encontrada".
 - **Postar (`/ideias/nova`):** só para quem está logado e tem curso. Depois do envio, vai para a página da ideia nova.
@@ -155,6 +164,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - [ ] Texto sobre fundo com contraste de 4.5:1 ou mais nos dois temas; use só os pares do design system (`ink`/`ink-muted` sobre `surface-*`, `on-primary` sobre `primary`, `on-accent` sobre `accent`).
 - [ ] A informação não depende só da cor: status com a palavra, selo com texto.
 - [ ] Alternáveis usam `aria-pressed` e mudam texto e cor juntos.
+- [ ] Animação só como resposta a uma ação, curta, e desligada com `prefers-reduced-motion`. Todo botão afunda um pouco no clique (`scale(0.97)`).
 - [ ] Botão só de ícone tem `aria-label`; ícone ao lado de texto é `aria-hidden`.
 - [ ] Botões pequenos e abas sobem para 44px de altura em tela de toque (`@media (pointer: coarse)`).
 - [ ] Aviso que aparece depois de uma ação usa região viva: `role="alert"` para erro e `role="status"` para sucesso. A região já existe no DOM antes da mensagem, quando for `status`.
@@ -180,3 +190,5 @@ Previsto no artefato, mas sem código ainda. Não é regra até ser implementado
 - Postar ideia: o artefato prevê o modal "Ideia postada" na volta ao mural. **O front vai para a página da ideia nova.**
 - `IdeaCard`: o artefato tem o "Quero participar" no card e a altura livre. **No front, o card não tem ação, tem altura fixa e usa a sigla do curso.**
 - Título da página da ideia: o artefato tem `title-1` com 28px. **O front usa 24px.**
+- Botões: o artefato só tem `radius-sm`. **O front usa pílula nos alternáveis, no painel do autor e na barra do topo, e o status do autor é um seletor segmentado.**
+- Cabeçalho: o artefato alinha o conteúdo da barra à coluna da página. **O front estica a barra de ponta a ponta, com o logo à esquerda.**

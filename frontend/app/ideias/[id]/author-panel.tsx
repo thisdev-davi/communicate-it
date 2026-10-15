@@ -38,10 +38,10 @@ export function AuthorPanel({ ideaId, status }: { ideaId: number; status: string
       </h2>
       <StatusControl ideaId={ideaId} status={status} />
       <div className={styles.actions}>
-        <ButtonLink href={`/ideias/${ideaId}/editar`} variant="secondary">
+        <ButtonLink href={`/ideias/${ideaId}/editar`} variant="secondary" pill>
           Editar ideia
         </ButtonLink>
-        <Button variant="danger" disabled={pending} onClick={remove}>
+        <Button variant="danger" pill disabled={pending} onClick={remove}>
           {pending ? "Apagando…" : "Apagar ideia"}
         </Button>
       </div>

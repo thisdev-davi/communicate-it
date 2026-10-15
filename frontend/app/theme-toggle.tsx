@@ -40,6 +40,7 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="sm"
+      pill
       className={styles.iconOnly}
       icon={dark === null ? undefined : dark ? "moon" : "sun"}
       aria-label="Tema escuro"

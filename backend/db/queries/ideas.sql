@@ -1,5 +1,6 @@
 -- Create, Update, List, ListMy e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
 -- interest_count e interested dizem quantos marcaram "quero participar" e se quem pede (viewer) é um deles; viewer 0 = visitante.
+-- interest_faces são os 8 primeiros interessados (id, nome e foto) em JSON, na ordem de chegada; o visitante recebe [].
 
 -- name: CreateIdea :one
 -- Ideia recém-criada ainda não tem interessados: as duas colunas saem fixas.
@@ -10,7 +11,7 @@ WITH i AS (
 )
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
-       0::bigint AS interest_count, false AS interested
+       0::bigint AS interest_count, false AS interested, '[]'::json AS interest_faces
 FROM i
 JOIN users u ON u.id = i.author_id;
 
@@ -21,7 +22,10 @@ JOIN users u ON u.id = i.author_id;
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
-       EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested
+       EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested,
+       (SELECT coalesce(json_agg(json_build_object('id', f.id, 'name', f.name, 'avatar_url', f.avatar_url) ORDER BY f.created_at, f.id), '[]')
+        FROM (SELECT u2.id, u2.name, u2.avatar_url, n.created_at FROM interests n JOIN users u2 ON u2.id = n.user_id
+              WHERE n.idea_id = i.id AND sqlc.arg('viewer') <> 0 ORDER BY n.created_at, n.user_id LIMIT 8) f)::json AS interest_faces
 FROM ideas i
 JOIN users u ON u.id = i.author_id
 WHERE (i.status = 'done') = sqlc.arg('done')::bool
@@ -32,7 +36,10 @@ LIMIT sqlc.narg('max');
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
-       EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested
+       EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested,
+       (SELECT coalesce(json_agg(json_build_object('id', f.id, 'name', f.name, 'avatar_url', f.avatar_url) ORDER BY f.created_at, f.id), '[]')
+        FROM (SELECT u2.id, u2.name, u2.avatar_url, n.created_at FROM interests n JOIN users u2 ON u2.id = n.user_id
+              WHERE n.idea_id = i.id ORDER BY n.created_at, n.user_id LIMIT 8) f)::json AS interest_faces
 FROM ideas i
 JOIN users u ON u.id = i.author_id
 WHERE i.id = sqlc.arg('id');
@@ -68,7 +75,10 @@ WITH i AS (
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
-       false AS interested
+       false AS interested,
+       (SELECT coalesce(json_agg(json_build_object('id', f.id, 'name', f.name, 'avatar_url', f.avatar_url) ORDER BY f.created_at, f.id), '[]')
+        FROM (SELECT u2.id, u2.name, u2.avatar_url, n.created_at FROM interests n JOIN users u2 ON u2.id = n.user_id
+              WHERE n.idea_id = i.id ORDER BY n.created_at, n.user_id LIMIT 8) f)::json AS interest_faces
 FROM i
 JOIN users u ON u.id = i.author_id;
 
@@ -88,7 +98,10 @@ WHERE id = sqlc.arg('id');
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
-       false AS interested
+       false AS interested,
+       (SELECT coalesce(json_agg(json_build_object('id', f.id, 'name', f.name, 'avatar_url', f.avatar_url) ORDER BY f.created_at, f.id), '[]')
+        FROM (SELECT u2.id, u2.name, u2.avatar_url, n.created_at FROM interests n JOIN users u2 ON u2.id = n.user_id
+              WHERE n.idea_id = i.id ORDER BY n.created_at, n.user_id LIMIT 8) f)::json AS interest_faces
 FROM ideas i
 JOIN users u ON u.id = i.author_id
 WHERE i.author_id = $1

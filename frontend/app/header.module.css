@@ -1,6 +1,6 @@
-/* Cabeçalho das Telas do design system. A barra (.head) vai de ponta a ponta; o .bar tem a mesma largura e o mesmo
-   recuo do .page do mural. Os itens do usuário entram direto na linha flex do .bar; o aviso de erro ao sair quebra
-   para a linha de baixo. */
+/* Cabeçalho das Telas do design system. A barra (.head) e o conteúdo dela (.bar) vão de ponta a ponta: o logo fica
+   colado à esquerda da tela e o usuário à direita, fora da coluna do mural. Os itens do usuário entram direto na linha
+   flex do .bar; o aviso de erro ao sair quebra para a linha de baixo. */
 .head {
   background: var(--surface-raised);
   border-bottom: 1px solid var(--line);
@@ -11,10 +11,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
-  max-width: 1040px;
   min-height: 64px;
   box-sizing: border-box;
-  margin: 0 auto;
   padding: var(--space-2) var(--space-6);
 }
 
@@ -43,11 +41,14 @@
   align-items: center;
   height: 32px;
   padding: 0 var(--space-3);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   font-size: 13px;
   font-weight: 600;
   color: var(--ink-muted);
   text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .link:hover {
@@ -55,7 +56,7 @@
   background: var(--surface-sunken);
 }
 
-/* A página atual: cor e fundo juntos (não só a cor), como o hover do botão secundário. */
+/* A página atual: cor e fundo juntos (não só a cor). O hover (acima) usa outro fundo, para não parecer a atual. */
 .link[aria-current="page"] {
   color: var(--primary);
   background: var(--primary-soft);
