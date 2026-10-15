@@ -89,6 +89,16 @@ type interestResponse struct {
 	DiscordID *string `json:"discord_id"`
 }
 
+type profileResponse struct {
+	ID            int64          `json:"id"`
+	Name          string         `json:"name"`
+	AvatarURL     *string        `json:"avatar_url"`
+	Course        *string        `json:"course"` // null enquanto o cadastro está pendente
+	DiscordID     *string        `json:"discord_id"`
+	Ideas         []ideaResponse `json:"ideas"`         // as que postou
+	Participating []ideaResponse `json:"participating"` // as que marcou "quero participar"
+}
+
 type errorResponse struct {
 	Error  string            `json:"error"`
 	Fields map[string]string `json:"fields,omitempty"`
@@ -218,7 +228,7 @@ func (h *Handler) Mine(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, err := h.q.ListMyIdeas(r.Context(), userID)
+	rows, err := h.q.ListAuthorIdeas(r.Context(), ListAuthorIdeasParams{Author: userID, Viewer: userID})
 	if err != nil {
 		internalError(w, "list my ideas", err)
 		return
@@ -228,6 +238,55 @@ func (h *Handler) Mine(w http.ResponseWriter, r *http.Request) {
 		items = append(items, toResponse(ListIdeasRow(row)))
 	}
 	writeJSON(w, http.StatusOK, map[string][]ideaResponse{"items": items})
+}
+
+// Profile é o perfil do aluno (docs/contratos/fatia-10-perfil.md): quem é, as ideias que postou e as que participa.
+// Mora em ideas porque, tirando o cabeçalho, é tudo ideia: reaproveita as queries e o toResponse.
+func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
+	viewer, ok := h.loggedIn(w, r)
+	if !ok {
+		return
+	}
+	id, ok := pathID(r)
+	if !ok {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
+		return
+	}
+	user, err := h.q.GetUser(r.Context(), id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
+		return
+	}
+	if err != nil {
+		internalError(w, "get user", err)
+		return
+	}
+	posted, err := h.q.ListAuthorIdeas(r.Context(), ListAuthorIdeasParams{Author: id, Viewer: viewer})
+	if err != nil {
+		internalError(w, "list author ideas", err)
+		return
+	}
+	joined, err := h.q.ListParticipating(r.Context(), ListParticipatingParams{Member: id, Viewer: viewer})
+	if err != nil {
+		internalError(w, "list participating", err)
+		return
+	}
+	resp := profileResponse{
+		ID:            user.ID,
+		Name:          user.Name,
+		AvatarURL:     user.AvatarUrl,
+		Course:        user.Course,
+		DiscordID:     user.DiscordID,
+		Ideas:         make([]ideaResponse, 0, len(posted)), // não-nil: lista vazia vira [] no JSON, não null
+		Participating: make([]ideaResponse, 0, len(joined)),
+	}
+	for _, row := range posted {
+		resp.Ideas = append(resp.Ideas, toResponse(ListIdeasRow(row)))
+	}
+	for _, row := range joined {
+		resp.Participating = append(resp.Participating, toResponse(ListIdeasRow(row)))
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // Get devolve uma ideia, só para quem está logado: o visitante fica na prévia do mural.

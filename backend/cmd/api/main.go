@@ -89,6 +89,7 @@ func routes(a *auth.Handler, h *ideas.Handler) http.Handler {
 	mux.HandleFunc("GET /api/me", a.Me)
 	mux.HandleFunc("PATCH /api/me", a.SetCourse)
 	mux.HandleFunc("GET /api/me/ideas", h.Mine)
+	mux.HandleFunc("GET /api/users/{id}", h.Profile)
 	mux.HandleFunc("POST /api/ideas", h.Create)
 	mux.HandleFunc("GET /api/ideas", h.List)
 	mux.HandleFunc("GET /api/ideas/{id}", h.Get)
