@@ -35,17 +35,18 @@ func (q *Queries) DeleteSession(ctx context.Context, tokenHash []byte) error {
 }
 
 const getSessionUser = `-- name: GetSessionUser :one
-SELECT u.id, u.name, u.avatar_url, u.course
+SELECT u.id, u.name, u.avatar_url, u.course, u.skills
 FROM sessions s
 JOIN users u ON u.id = s.user_id
 WHERE s.token_hash = $1 AND s.expires_at > now()
 `
 
 type GetSessionUserRow struct {
-	ID        int64   `json:"id"`
-	Name      string  `json:"name"`
-	AvatarUrl *string `json:"avatar_url"`
-	Course    *string `json:"course"`
+	ID        int64    `json:"id"`
+	Name      string   `json:"name"`
+	AvatarUrl *string  `json:"avatar_url"`
+	Course    *string  `json:"course"`
+	Skills    []string `json:"skills"`
 }
 
 func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (GetSessionUserRow, error) {
@@ -56,22 +57,30 @@ func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (GetSess
 		&i.Name,
 		&i.AvatarUrl,
 		&i.Course,
+		&i.Skills,
 	)
 	return i, err
 }
 
-const setUserCourse = `-- name: SetUserCourse :exec
-UPDATE users SET course = $2 WHERE id = $1
+const updateMe = `-- name: UpdateMe :one
+UPDATE users
+SET course = $1, skills = coalesce($2::text[], skills)
+WHERE id = $3
+RETURNING skills
 `
 
-type SetUserCourseParams struct {
-	ID     int64   `json:"id"`
-	Course *string `json:"course"`
+type UpdateMeParams struct {
+	Course *string  `json:"course"`
+	Skills []string `json:"skills"`
+	ID     int64    `json:"id"`
 }
 
-func (q *Queries) SetUserCourse(ctx context.Context, arg SetUserCourseParams) error {
-	_, err := q.db.Exec(ctx, setUserCourse, arg.ID, arg.Course)
-	return err
+// skills NULL (o corpo veio sem o campo, como no cadastro) mantém as habilidades gravadas.
+func (q *Queries) UpdateMe(ctx context.Context, arg UpdateMeParams) ([]string, error) {
+	row := q.db.QueryRow(ctx, updateMe, arg.Course, arg.Skills, arg.ID)
+	var skills []string
+	err := row.Scan(&skills)
+	return skills, err
 }
 
 const upsertDiscordUser = `-- name: UpsertDiscordUser :one

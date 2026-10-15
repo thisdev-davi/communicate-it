@@ -9,7 +9,7 @@ RETURNING id, course;
 INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ($1, $2, $3);
 
 -- name: GetSessionUser :one
-SELECT u.id, u.name, u.avatar_url, u.course
+SELECT u.id, u.name, u.avatar_url, u.course, u.skills
 FROM sessions s
 JOIN users u ON u.id = s.user_id
 WHERE s.token_hash = $1 AND s.expires_at > now();
@@ -17,5 +17,9 @@ WHERE s.token_hash = $1 AND s.expires_at > now();
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE token_hash = $1;
 
--- name: SetUserCourse :exec
-UPDATE users SET course = $2 WHERE id = $1;
+-- name: UpdateMe :one
+-- skills NULL (o corpo veio sem o campo, como no cadastro) mantém as habilidades gravadas.
+UPDATE users
+SET course = sqlc.arg('course'), skills = coalesce(sqlc.narg('skills')::text[], skills)
+WHERE id = sqlc.arg('id')
+RETURNING skills;
