@@ -11,3 +11,21 @@
   line-height: 20px;
   color: var(--danger);
 }
+
+/* O check entra com um pulo curto quando a pessoa acabou de entrar na lista. */
+.pop svg {
+  animation: pop 0.3s ease-out;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.4) rotate(-20deg);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop svg {
+    animation: none;
+  }
+}
