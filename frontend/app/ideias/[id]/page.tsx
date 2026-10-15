@@ -5,6 +5,7 @@ import { Avatar } from "../../components/Avatar";
 import { CallOnDiscord } from "../../components/CallOnDiscord";
 import { IdeaCard } from "../../components/IdeaCard";
 import { InterestButton } from "../../components/InterestButton";
+import { SkillChips } from "../../components/SkillChips";
 import { StatePanel } from "../../components/StatePanel";
 import { type Idea, type Interest } from "../../ideas";
 import { getMe } from "../../me";
@@ -70,6 +71,8 @@ function Interested({ people, ideaTitle }: { people: Interest[]; ideaTitle: stri
               </Link>
               {/* Sem discord_id só os usuários fictícios do seed local: não há perfil para abrir. */}
               {p.discord_id && <CallOnDiscord discordId={p.discord_id} name={p.name} ideaTitle={ideaTitle} />}
+              {/* O que a pessoa sabe fazer, para o autor decidir quem chamar. */}
+              {p.skills.length > 0 && <SkillChips skills={p.skills} className={styles.skills} />}
             </li>
           ))}
         </ul>

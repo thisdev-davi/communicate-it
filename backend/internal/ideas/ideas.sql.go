@@ -188,7 +188,7 @@ func (q *Queries) GetIdeaAuthor(ctx context.Context, id int64) (GetIdeaAuthorRow
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, name, avatar_url, course, discord_id FROM users WHERE id = $1
+SELECT id, name, avatar_url, course, discord_id, skills FROM users WHERE id = $1
 `
 
 type GetUserRow struct {
@@ -197,6 +197,7 @@ type GetUserRow struct {
 	AvatarUrl *string
 	Course    *string
 	DiscordID *string
+	Skills    []string
 }
 
 func (q *Queries) GetUser(ctx context.Context, id int64) (GetUserRow, error) {
@@ -208,6 +209,7 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (GetUserRow, error) {
 		&i.AvatarUrl,
 		&i.Course,
 		&i.DiscordID,
+		&i.Skills,
 	)
 	return i, err
 }
@@ -365,7 +367,7 @@ func (q *Queries) ListIdeas(ctx context.Context, arg ListIdeasParams) ([]ListIde
 }
 
 const listInterests = `-- name: ListInterests :many
-SELECT u.id, u.name, u.avatar_url, u.discord_id
+SELECT u.id, u.name, u.avatar_url, u.discord_id, u.skills
 FROM interests n
 JOIN users u ON u.id = n.user_id
 WHERE n.idea_id = $1
@@ -377,6 +379,7 @@ type ListInterestsRow struct {
 	Name      string
 	AvatarUrl *string
 	DiscordID *string
+	Skills    []string
 }
 
 // Em ordem de chegada: quem marcou primeiro aparece primeiro para o autor.
@@ -394,6 +397,7 @@ func (q *Queries) ListInterests(ctx context.Context, ideaID int64) ([]ListIntere
 			&i.Name,
 			&i.AvatarUrl,
 			&i.DiscordID,
+			&i.Skills,
 		); err != nil {
 			return nil, err
 		}

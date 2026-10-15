@@ -123,7 +123,7 @@ func TestCallbackFailures(t *testing.T) {
 
 func TestMeWithoutSessionIs401(t *testing.T) {
 	h := newTestHandler(nil, nil)
-	for method, hf := range map[string]http.HandlerFunc{"GET": h.Me, "PATCH": h.SetCourse} {
+	for method, hf := range map[string]http.HandlerFunc{"GET": h.Me, "PATCH": h.UpdateMe} {
 		rec := httptest.NewRecorder()
 		hf(rec, httptest.NewRequest(method, "/api/me", strings.NewReader(`{"course":"cc"}`)))
 		if rec.Code != http.StatusUnauthorized || !strings.Contains(rec.Body.String(), `"unauthenticated"`) {
@@ -176,14 +176,14 @@ func TestLoginMeLogout(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPatch, "/api/me", strings.NewReader(body))
 		req.AddCookie(c)
 		rec := httptest.NewRecorder()
-		h.SetCourse(rec, req)
+		h.UpdateMe(rec, req)
 		return rec
 	}
 
 	// Primeiro login: ainda sem curso, vai para o cadastro.
 	session := login("/cadastro")
 	rec := me(session)
-	want := `{"id":1,"name":"Ana","avatar_url":"https://cdn.discordapp.com/avatars/9001/abc.png","course":null}`
+	want := `{"id":1,"name":"Ana","avatar_url":"https://cdn.discordapp.com/avatars/9001/abc.png","course":null,"skills":[]}`
 	if rec.Code != 200 || strings.TrimSpace(rec.Body.String()) != want {
 		t.Fatalf("me: %d %s, quer %s", rec.Code, rec.Body, want)
 	}
@@ -214,6 +214,32 @@ func TestLoginMeLogout(t *testing.T) {
 	}
 	if body := strings.TrimSpace(me(session).Body.String()); body != want {
 		t.Fatalf("curso não gravou: %s", body)
+	}
+
+	// Habilidades (fatia 11): gravadas sem repetição e na ordem do catálogo; sem o campo, não mudam; [] limpa.
+	skills := []struct{ name, body, want string }{
+		{"limpa e ordena", `{"course":"ads","skills":["data","backend","data"]}`, `"course":"ads","skills":["backend","data"]}`},
+		{"sem o campo mantém", `{"course":"cc"}`, `"course":"cc","skills":["backend","data"]}`},
+		{"vazio limpa", `{"course":"cc","skills":[]}`, `"course":"cc","skills":[]}`},
+	}
+	for _, tc := range skills {
+		rec := setCourse(session, tc.body)
+		if rec.Code != 200 || !strings.HasSuffix(strings.TrimSpace(rec.Body.String()), tc.want) {
+			t.Errorf("%s: %d %s, quer 200 terminando em %s", tc.name, rec.Code, rec.Body, tc.want)
+		}
+		if body := strings.TrimSpace(me(session).Body.String()); !strings.HasSuffix(body, tc.want) {
+			t.Errorf("%s: GET /api/me = %s, quer terminando em %s", tc.name, body, tc.want)
+		}
+	}
+	badSkills := []struct{ name, body, want string }{
+		{"fora do catálogo", `{"course":"cc","skills":["culinaria"]}`, `{"error":"validation_failed","fields":{"skills":"valor inválido"}}`},
+		{"mais de 5", `{"course":"cc","skills":["frontend","backend","mobile","design","data","ai"]}`, `{"error":"validation_failed","fields":{"skills":"escolha até 5"}}`},
+		{"tipo errado", `{"course":"cc","skills":"backend"}`, `{"error":"invalid_json"}`},
+	}
+	for _, tc := range badSkills {
+		if rec := setCourse(session, tc.body); rec.Code != 400 || strings.TrimSpace(rec.Body.String()) != tc.want {
+			t.Errorf("%s: %d %s, quer 400 %s", tc.name, rec.Code, rec.Body, tc.want)
+		}
 	}
 
 	// Segundo login, já com curso e com outro nome no Discord: vai para o mural, mesmo usuário, nome atualizado.

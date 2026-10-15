@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 
 const (
 	maxBodyBytes = 64 << 10 // 64 KB
+	maxSkills    = 5        // habilidades por aluno
 	previewSize  = 3        // quantas ideias o visitante vê (docs/contratos/fatia-3-cadastro.md)
 )
 
@@ -28,6 +30,9 @@ var (
 		"competitive_programming": true, "security": true, "iot": true, "other": true,
 	}
 	statuses = map[string]bool{"open": true, "in_progress": true, "done": true} // docs/contratos/fatia-7-status.md
+	// Skills é o catálogo de habilidades (docs/contratos/fatia-11-habilidades.md), na ordem em que são gravadas e mostradas.
+	// Slice e não map porque a ordem importa. Exportada porque o perfil (pacote auth) valida contra ela.
+	Skills = []string{"frontend", "backend", "mobile", "design", "data", "ai", "devops", "games", "security", "hardware", "testing", "management"}
 )
 
 type Handler struct {
@@ -83,10 +88,11 @@ type ideaResponse struct {
 
 // Mesmos campos, com os mesmos nomes, do ListInterestsRow gerado (por isso AvatarUrl, não AvatarURL): a conversão é direta.
 type interestResponse struct {
-	ID        int64   `json:"id"`
-	Name      string  `json:"name"`
-	AvatarUrl *string `json:"avatar_url"`
-	DiscordID *string `json:"discord_id"`
+	ID        int64    `json:"id"`
+	Name      string   `json:"name"`
+	AvatarUrl *string  `json:"avatar_url"`
+	DiscordID *string  `json:"discord_id"`
+	Skills    []string `json:"skills"`
 }
 
 type profileResponse struct {
@@ -95,6 +101,7 @@ type profileResponse struct {
 	AvatarURL     *string        `json:"avatar_url"`
 	Course        *string        `json:"course"` // null enquanto o cadastro está pendente
 	DiscordID     *string        `json:"discord_id"`
+	Skills        []string       `json:"skills"`
 	Ideas         []ideaResponse `json:"ideas"`         // as que postou
 	Participating []ideaResponse `json:"participating"` // as que marcou "quero participar"
 }
@@ -277,6 +284,7 @@ func (h *Handler) Profile(w http.ResponseWriter, r *http.Request) {
 		AvatarURL:     user.AvatarUrl,
 		Course:        user.Course,
 		DiscordID:     user.DiscordID,
+		Skills:        user.Skills,
 		Ideas:         make([]ideaResponse, 0, len(posted)), // não-nil: lista vazia vira [] no JSON, não null
 		Participating: make([]ideaResponse, 0, len(joined)),
 	}
@@ -493,6 +501,27 @@ func CheckOption(fields map[string]string, name, v string, allowed map[string]bo
 	case !allowed[v]:
 		fields[name] = "valor inválido"
 	}
+}
+
+// CleanSkills devolve as habilidades sem repetição e na ordem do catálogo. Valor fora do catálogo ou mais de
+// maxSkills grava o erro em fields; exportada para o perfil (pacote auth) usar as mesmas mensagens.
+func CleanSkills(fields map[string]string, name string, in []string) []string {
+	for _, s := range in {
+		if !slices.Contains(Skills, s) {
+			fields[name] = "valor inválido"
+			return nil
+		}
+	}
+	out := []string{} // não-nil: para quem grava, nil é "não mexer" e [] é "limpar"
+	for _, s := range Skills {
+		if slices.Contains(in, s) {
+			out = append(out, s)
+		}
+	}
+	if len(out) > maxSkills {
+		fields[name] = fmt.Sprintf("escolha até %d", maxSkills)
+	}
+	return out
 }
 
 func toResponse(r ListIdeasRow) ideaResponse {

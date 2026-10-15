@@ -10,6 +10,8 @@ Mudou o contrato? Atualiza este arquivo **antes** do código.
 >
 > **Atualizado pela [fatia 10](fatia-10-perfil.md):** na seção "Interessados (N)", a foto e o nome de cada pessoa levam ao perfil dela.
 
+> **Atualizado pela [fatia 11](fatia-11-habilidades.md):** cada pessoa de `interests` ganha `skills`.
+
 ## Fora desta fatia (de propósito)
 
 Aviso ao autor quando alguém entra (o bot do Discord é fase futura), travar novos interessados e trocar o status (fatia de status), o @ do autor para o interessado chamar, vagas preenchidas automaticamente, perfil com "ideias que participei".

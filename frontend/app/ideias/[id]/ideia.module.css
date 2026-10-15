@@ -211,6 +211,12 @@
   font-weight: 600;
 }
 
+/* Habilidades na linha de baixo, alinhadas ao nome (foto de 28px + o gap). */
+.skills {
+  flex-basis: 100%;
+  padding-left: calc(28px + var(--space-3));
+}
+
 @media (max-width: 600px) {
   .page {
     padding: var(--space-6) var(--space-4) var(--space-7);

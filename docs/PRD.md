@@ -47,10 +47,10 @@ O navegador fala com o front em Next.js, que chama a API em Go; a API acessa o P
 
 Tabelas principais do MVP:
 
-- **users:** o aluno. id, discord_id, nome, foto, curso.
+- **users:** o aluno. id, discord_id, nome, foto, curso, habilidades.
 - **ideas:** a ideia postada. id, autor (users), título, descrição, curso, categoria, número de vagas, status (aberta, em andamento, concluída).
 - **interests:** quem clicou em "quero participar". Liga um user a uma idea.
-- **skills:** catálogo de habilidades (front, back, design, dados). Liga-se a users (habilidades do aluno) e a ideas (habilidades procuradas) por tabelas de junção.
+- **Habilidades:** catálogo fixo no código (front-end, back-end, design, dados…), como curso e categoria. Cada aluno guarda as suas numa coluna `skills` (array), e cada ideia vai guardar as procuradas do mesmo jeito. Sem tabela de catálogo nem tabelas de junção: a lista é curta e muda pouco ([fatia 11](contratos/fatia-11-habilidades.md)).
 - **events:** o evento. id, título, data, local. Presença confirmada também vira uma ligação entre user e event.
 
 ```mermaid
@@ -58,12 +58,10 @@ erDiagram
     users ||--o{ ideas : "posta"
     users ||--o{ interests : "demonstra"
     ideas ||--o{ interests : "recebe"
-    users }o--o{ skills : "tem (user_skills)"
-    ideas }o--o{ skills : "procura (idea_skills)"
     users }o--o{ events : "confirma presença (event_attendees)"
 ```
 
-Um aluno posta várias ideias; cada ideia reúne vários interessados; habilidades são compartilhadas entre perfis e ideias.
+Um aluno posta várias ideias; cada ideia reúne vários interessados; perfis e ideias usam o mesmo catálogo de habilidades.
 
 ## Funcionalidades do MVP
 

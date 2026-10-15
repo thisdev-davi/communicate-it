@@ -58,7 +58,7 @@ DELETE FROM interests WHERE idea_id = $1 AND user_id = $2;
 
 -- name: ListInterests :many
 -- Em ordem de chegada: quem marcou primeiro aparece primeiro para o autor.
-SELECT u.id, u.name, u.avatar_url, u.discord_id
+SELECT u.id, u.name, u.avatar_url, u.discord_id, u.skills
 FROM interests n
 JOIN users u ON u.id = n.user_id
 WHERE n.idea_id = $1
@@ -123,4 +123,4 @@ WHERE p.user_id = sqlc.arg('member')
 ORDER BY p.created_at DESC, i.id DESC;
 
 -- name: GetUser :one
-SELECT id, name, avatar_url, course, discord_id FROM users WHERE id = $1;
+SELECT id, name, avatar_url, course, discord_id, skills FROM users WHERE id = $1;

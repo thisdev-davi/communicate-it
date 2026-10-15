@@ -40,4 +40,5 @@ type User struct {
 	AvatarUrl *string
 	Course    *string
 	CreatedAt time.Time
+	Skills    []string
 }
