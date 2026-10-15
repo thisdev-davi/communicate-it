@@ -7,6 +7,8 @@ Mudou o contrato? Atualiza este arquivo **antes** do código.
 > **Atualizado pela [fatia 7](fatia-7-status.md):** o status agora é conferido. Só ideia `open` recebe interessados; as outras respondem `409 closed`, e a página esconde o botão.
 >
 > **Atualizado em "rostos dos interessados":** todas as respostas com ideias ganham `interest_faces`, a foto e o nome dos primeiros interessados, para quem está logado (seção [Rostos dos interessados](#rostos-dos-interessados)).
+>
+> **Atualizado pela [fatia 10](fatia-10-perfil.md):** na seção "Interessados (N)", a foto e o nome de cada pessoa levam ao perfil dela.
 
 ## Fora desta fatia (de propósito)
 

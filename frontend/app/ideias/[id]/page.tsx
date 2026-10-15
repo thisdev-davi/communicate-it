@@ -2,13 +2,13 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Avatar } from "../../components/Avatar";
+import { CallOnDiscord } from "../../components/CallOnDiscord";
 import { IdeaCard } from "../../components/IdeaCard";
 import { InterestButton } from "../../components/InterestButton";
 import { StatePanel } from "../../components/StatePanel";
 import { type Idea, type Interest } from "../../ideas";
 import { getMe } from "../../me";
 import { AuthorPanel } from "./author-panel";
-import { CallOnDiscord } from "./call-on-discord";
 import { getIdea } from "./get-idea";
 import styles from "./ideia.module.css";
 
@@ -64,8 +64,10 @@ function Interested({ people, ideaTitle }: { people: Interest[]; ideaTitle: stri
         <ul className={styles.list}>
           {people.map((p) => (
             <li key={p.id} className={styles.person}>
-              <Avatar name={p.name} src={p.avatar_url} />
-              <span className={styles.name}>{p.name}</span>
+              <Link href={`/alunos/${p.id}`} className={styles.profile}>
+                <Avatar name={p.name} src={p.avatar_url} decorative />
+                <span className={styles.name}>{p.name}</span>
+              </Link>
               {/* Sem discord_id só os usuários fictícios do seed local: não há perfil para abrir. */}
               {p.discord_id && <CallOnDiscord discordId={p.discord_id} name={p.name} ideaTitle={ideaTitle} />}
             </li>

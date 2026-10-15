@@ -140,6 +140,10 @@
   .chip {
     height: 44px;
   }
+
+  .profile {
+    min-height: 44px;
+  }
 }
 
 .label {
@@ -184,26 +188,27 @@
   padding-top: 0;
 }
 
-.name {
+/* Foto e nome levam ao perfil da pessoa. */
+.profile {
+  display: flex;
   flex: 1;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.profile:hover .name {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.name {
   min-width: 0;
   overflow-wrap: anywhere;
   font-weight: 600;
-}
-
-.call {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-1);
-}
-
-/* Fica vazio (e sem altura) até a cópia dar certo; continua no DOM para o role="status" anunciar a mensagem. */
-.copied {
-  margin: 0;
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--status-done);
 }
 
 @media (max-width: 600px) {

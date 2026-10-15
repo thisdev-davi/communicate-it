@@ -56,6 +56,23 @@
   background: var(--surface-sunken);
 }
 
+/* Quem está logado: foto e nome numa pílula que leva ao próprio perfil, com o mesmo hover dos links. */
+.me {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 36px;
+  padding: 0 var(--space-3) 0 4px;
+  border-radius: var(--radius-full);
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.me:hover {
+  background: var(--surface-sunken);
+}
+
 /* A página atual: cor e fundo juntos (não só a cor). O hover (acima) usa outro fundo, para não parecer a atual. */
 .link[aria-current="page"] {
   color: var(--primary);
@@ -73,7 +90,8 @@
     width: 44px;
   }
 
-  .link {
+  .link,
+  .me {
     height: 44px;
   }
 }
@@ -123,5 +141,9 @@
 
   .name {
     display: none;
+  }
+
+  .me {
+    padding-right: 4px;
   }
 }

@@ -109,7 +109,7 @@ func TestSessionErrorIs500(t *testing.T) {
 	}
 	for name, hf := range map[string]http.HandlerFunc{
 		"GET uma": h.Get, "PUT ideia": h.Update, "DELETE ideia": h.Delete, "PUT status": h.SetStatus,
-		"PUT interesse": h.PutInterest, "DELETE interesse": h.DeleteInterest, "GET minhas": h.Mine,
+		"PUT interesse": h.PutInterest, "DELETE interesse": h.DeleteInterest, "GET minhas": h.Mine, "GET perfil": h.Profile,
 	} {
 		if rec := doID(t, hf, http.MethodGet, "1"); rec.Code != 500 || decode[errorResponse](t, rec).Error != "internal" {
 			t.Errorf("%s: status = %d (%s), quer 500 internal", name, rec.Code, rec.Body)
@@ -616,6 +616,104 @@ func TestMine(t *testing.T) {
 	}
 	if rec := do(t, NewHandler(pool, loggedAs(0)).Mine, http.MethodGet, ""); rec.Code != 401 || decode[errorResponse](t, rec).Error != "unauthenticated" {
 		t.Errorf("visitante: %d (%s), quer 401", rec.Code, rec.Body)
+	}
+}
+
+// Esses casos param antes do banco, então o handler roda sem conexão (nil).
+func TestProfileRejectsVisitorAndBadID(t *testing.T) {
+	cases := []struct {
+		name       string
+		userID     int64
+		id         string
+		wantStatus int
+		wantError  string
+	}{
+		{"visitante", 0, "1", 401, "unauthenticated"},
+		{"id não numérico", 1, "abc", 404, "not_found"},
+		{"id zero", 1, "0", 404, "not_found"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := doID(t, NewHandler(nil, loggedAs(tc.userID)).Profile, http.MethodGet, tc.id)
+			if rec.Code != tc.wantStatus || decode[errorResponse](t, rec).Error != tc.wantError {
+				t.Errorf("status = %d (%s), quer %d %s", rec.Code, rec.Body, tc.wantStatus, tc.wantError)
+			}
+		})
+	}
+}
+
+// Perfil contra Postgres real: dados do aluno, ideias postadas (todas, das mais novas para as mais antigas),
+// as que participa (da marcação mais recente para a mais antiga) e o interested de quem está vendo.
+func TestProfile(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+	var anaID, betoID, caioID int64
+	err := pool.QueryRow(ctx, `INSERT INTO users (name, course, discord_id) VALUES ('Ana de Teste', 'cc', '100') RETURNING id`).Scan(&anaID)
+	if err == nil {
+		err = pool.QueryRow(ctx, `INSERT INTO users (name, course) VALUES ('Beto de Teste', 'ads') RETURNING id`).Scan(&betoID)
+	}
+	if err == nil {
+		err = pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Caio de Teste') RETURNING id`).Scan(&caioID)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	create := func(authorID int64) int64 {
+		t.Helper()
+		rec := do(t, NewHandler(pool, loggedAs(authorID)).Create, http.MethodPost, validBody)
+		if rec.Code != 201 {
+			t.Fatalf("POST: %d (%s)", rec.Code, rec.Body)
+		}
+		return decode[ideaResponse](t, rec).ID
+	}
+	ana1, ana2, beto1, beto2 := create(anaID), create(anaID), create(betoID), create(betoID)
+	// Ana marca a beto2 antes da beto1: a lista segue a marcação, não a postagem. As datas são fixas para não empatar.
+	if _, err := pool.Exec(ctx, `INSERT INTO interests (idea_id, user_id, created_at) VALUES ($1, $3, now() - interval '1 hour'), ($2, $3, now())`,
+		beto2, beto1, anaID); err != nil {
+		t.Fatal(err)
+	}
+	caio := NewHandler(pool, loggedAs(caioID))
+	if rec := doID(t, caio.PutInterest, http.MethodPut, strconv.FormatInt(ana1, 10)); rec.Code != 204 {
+		t.Fatalf("PUT interesse: %d (%s)", rec.Code, rec.Body)
+	}
+
+	rec := doID(t, caio.Profile, http.MethodGet, strconv.FormatInt(anaID, 10))
+	if rec.Code != 200 {
+		t.Fatalf("perfil da Ana: %d (%s)", rec.Code, rec.Body)
+	}
+	got := decode[profileResponse](t, rec)
+	if got.ID != anaID || got.Name != "Ana de Teste" || got.Course == nil || *got.Course != "cc" || got.DiscordID == nil || *got.DiscordID != "100" {
+		t.Errorf("dados da Ana: %+v", got)
+	}
+	ids := func(items []ideaResponse) []int64 {
+		out := []int64{}
+		for _, i := range items {
+			out = append(out, i.ID)
+		}
+		return out
+	}
+	if want := []int64{ana2, ana1}; !reflect.DeepEqual(ids(got.Ideas), want) {
+		t.Errorf("ideias postadas = %v, quer %v", ids(got.Ideas), want)
+	}
+	if want := []int64{beto1, beto2}; !reflect.DeepEqual(ids(got.Participating), want) {
+		t.Errorf("participa de = %v, quer %v", ids(got.Participating), want)
+	}
+	// interested é de quem vê (Caio): ele está só na ana1.
+	if len(got.Ideas) == 2 && (!got.Ideas[1].Interested || got.Ideas[0].Interested || got.Participating[0].Interested) {
+		t.Errorf("interested deveria ser só da ana1 (Caio participa): %+v", got)
+	}
+
+	// Sem ideias nem curso: listas vazias ([], não null) e course null.
+	rec = doID(t, caio.Profile, http.MethodGet, strconv.FormatInt(caioID, 10))
+	if body := rec.Body.String(); rec.Code != 200 || !strings.Contains(body, `"course":null`) || !strings.Contains(body, `"ideas":[]`) {
+		t.Errorf("perfil vazio do Caio: %d %s", rec.Code, body)
+	}
+	if got := decode[profileResponse](t, rec); len(got.Participating) != 1 || got.Participating[0].ID != ana1 {
+		t.Errorf("Caio participa de %v, quer [%d]", ids(got.Participating), ana1)
+	}
+
+	if rec := doID(t, caio.Profile, http.MethodGet, "999999"); rec.Code != 404 || decode[errorResponse](t, rec).Error != "not_found" {
+		t.Errorf("perfil inexistente: %d (%s), quer 404 not_found", rec.Code, rec.Body)
 	}
 }
 

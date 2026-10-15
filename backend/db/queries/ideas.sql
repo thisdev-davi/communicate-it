@@ -1,4 +1,4 @@
--- Create, Update, List, ListMy e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
+-- Create, Update, List, ListAuthor, ListParticipating e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
 -- interest_count e interested dizem quantos marcaram "quero participar" e se quem pede (viewer) é um deles; viewer 0 = visitante.
 -- interest_faces são os 8 primeiros interessados (id, nome e foto) em JSON, na ordem de chegada; o visitante recebe [].
 
@@ -93,16 +93,34 @@ SET status = sqlc.arg('status'),
     done_at = CASE WHEN sqlc.arg('status') = 'done' THEN COALESCE(done_at, now()) END
 WHERE id = sqlc.arg('id');
 
--- name: ListMyIdeas :many
--- Todas as ideias de quem pede, em qualquer status. Mesmas colunas do ListIdeas; interested sai false (o autor não participa).
+-- name: ListAuthorIdeas :many
+-- Todas as ideias de um autor, em qualquer status: "Minhas ideias" (viewer = autor) e o perfil.
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
-       false AS interested,
+       EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested,
        (SELECT coalesce(json_agg(json_build_object('id', f.id, 'name', f.name, 'avatar_url', f.avatar_url) ORDER BY f.created_at, f.id), '[]')
         FROM (SELECT u2.id, u2.name, u2.avatar_url, n.created_at FROM interests n JOIN users u2 ON u2.id = n.user_id
               WHERE n.idea_id = i.id ORDER BY n.created_at, n.user_id LIMIT 8) f)::json AS interest_faces
 FROM ideas i
 JOIN users u ON u.id = i.author_id
-WHERE i.author_id = $1
+WHERE i.author_id = sqlc.arg('author')
 ORDER BY i.created_at DESC, i.id DESC;
+
+-- name: ListParticipating :many
+-- As ideias em que um aluno marcou "quero participar", em qualquer status, da marcação mais recente para a mais antiga.
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
+       (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
+       EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested,
+       (SELECT coalesce(json_agg(json_build_object('id', f.id, 'name', f.name, 'avatar_url', f.avatar_url) ORDER BY f.created_at, f.id), '[]')
+        FROM (SELECT u2.id, u2.name, u2.avatar_url, n.created_at FROM interests n JOIN users u2 ON u2.id = n.user_id
+              WHERE n.idea_id = i.id ORDER BY n.created_at, n.user_id LIMIT 8) f)::json AS interest_faces
+FROM interests p
+JOIN ideas i ON i.id = p.idea_id
+JOIN users u ON u.id = i.author_id
+WHERE p.user_id = sqlc.arg('member')
+ORDER BY p.created_at DESC, i.id DESC;
+
+-- name: GetUser :one
+SELECT id, name, avatar_url, course, discord_id FROM users WHERE id = $1;
