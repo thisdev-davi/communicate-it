@@ -8,12 +8,16 @@ function initials(name: string) {
   return ((parts[0][0] ?? "?") + last).toUpperCase(); // nome vazio vira "?"
 }
 
-// Só o tamanho "sm" (28px): o único que o cabeçalho e o card usam. A foto vem do CDN do Discord.
-export function Avatar({ name, src }: { name: string; src?: string | null }) {
+const PX = { sm: 28, lg: 72 };
+
+// "sm" (28px) no cabeçalho, no card e nas listas; "lg" (72px) no topo do perfil. A foto vem do CDN do Discord.
+// `decorative`: o nome já está escrito ao lado (ex.: dentro do link do autor), então o leitor de tela pula a foto
+// em vez de ler o nome duas vezes.
+export function Avatar({ name, src, size = "sm", decorative }: { name: string; src?: string | null; size?: "sm" | "lg"; decorative?: boolean }) {
   return (
-    <span className={styles.avatar}>
+    <span className={`${styles.avatar} ${styles[size]}`} aria-hidden={decorative || undefined}>
       {src ? (
-        <Image src={src} alt={name} width={28} height={28} />
+        <Image src={src} alt={name} width={PX[size]} height={PX[size]} />
       ) : (
         <>
           <span aria-hidden="true">{initials(name)}</span>

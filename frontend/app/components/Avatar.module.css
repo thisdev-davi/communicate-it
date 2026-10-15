@@ -1,17 +1,26 @@
-/* Regras do .cf-avatar (tamanho sm) do bundle.css do design system. */
+/* Regras do .cf-avatar do bundle.css do design system. */
 .avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: none;
-  width: 28px;
-  height: 28px;
   border-radius: var(--radius-full);
   overflow: hidden;
   background: var(--primary-soft);
   color: var(--primary);
-  font-size: 11px;
   font-weight: 700;
+}
+
+.sm {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+
+.lg {
+  width: 72px;
+  height: 72px;
+  font-size: 24px;
 }
 
 .avatar img {
