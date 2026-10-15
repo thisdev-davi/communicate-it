@@ -67,7 +67,7 @@ type CreateIdeaRow struct {
 	InterestFaces   []byte
 }
 
-// Create, Update, List, ListMy e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
+// Create, Update, List, ListAuthor, ListParticipating e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
 // interest_count e interested dizem quantos marcaram "quero participar" e se quem pede (viewer) é um deles; viewer 0 = visitante.
 // interest_faces são os 8 primeiros interessados (id, nome e foto) em JSON, na ordem de chegada; o visitante recebe [].
 // Ideia recém-criada ainda não tem interessados: as duas colunas saem fixas.
@@ -185,6 +185,105 @@ func (q *Queries) GetIdeaAuthor(ctx context.Context, id int64) (GetIdeaAuthorRow
 	var i GetIdeaAuthorRow
 	err := row.Scan(&i.AuthorID, &i.Status)
 	return i, err
+}
+
+const getUser = `-- name: GetUser :one
+SELECT id, name, avatar_url, course, discord_id FROM users WHERE id = $1
+`
+
+type GetUserRow struct {
+	ID        int64
+	Name      string
+	AvatarUrl *string
+	Course    *string
+	DiscordID *string
+}
+
+func (q *Queries) GetUser(ctx context.Context, id int64) (GetUserRow, error) {
+	row := q.db.QueryRow(ctx, getUser, id)
+	var i GetUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.AvatarUrl,
+		&i.Course,
+		&i.DiscordID,
+	)
+	return i, err
+}
+
+const listAuthorIdeas = `-- name: ListAuthorIdeas :many
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
+       (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
+       EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested,
+       (SELECT coalesce(json_agg(json_build_object('id', f.id, 'name', f.name, 'avatar_url', f.avatar_url) ORDER BY f.created_at, f.id), '[]')
+        FROM (SELECT u2.id, u2.name, u2.avatar_url, n.created_at FROM interests n JOIN users u2 ON u2.id = n.user_id
+              WHERE n.idea_id = i.id ORDER BY n.created_at, n.user_id LIMIT 8) f)::json AS interest_faces
+FROM ideas i
+JOIN users u ON u.id = i.author_id
+WHERE i.author_id = $2
+ORDER BY i.created_at DESC, i.id DESC
+`
+
+type ListAuthorIdeasParams struct {
+	Viewer int64
+	Author int64
+}
+
+type ListAuthorIdeasRow struct {
+	ID              int64
+	Title           string
+	Description     string
+	Course          string
+	Category        string
+	Slots           int32
+	Status          string
+	CreatedAt       time.Time
+	DoneAt          *time.Time
+	AuthorID        int64
+	AuthorName      string
+	AuthorAvatarUrl *string
+	InterestCount   int64
+	Interested      bool
+	InterestFaces   []byte
+}
+
+// Todas as ideias de um autor, em qualquer status: "Minhas ideias" (viewer = autor) e o perfil.
+func (q *Queries) ListAuthorIdeas(ctx context.Context, arg ListAuthorIdeasParams) ([]ListAuthorIdeasRow, error) {
+	rows, err := q.db.Query(ctx, listAuthorIdeas, arg.Viewer, arg.Author)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAuthorIdeasRow
+	for rows.Next() {
+		var i ListAuthorIdeasRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.Course,
+			&i.Category,
+			&i.Slots,
+			&i.Status,
+			&i.CreatedAt,
+			&i.DoneAt,
+			&i.AuthorID,
+			&i.AuthorName,
+			&i.AuthorAvatarUrl,
+			&i.InterestCount,
+			&i.Interested,
+			&i.InterestFaces,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listIdeas = `-- name: ListIdeas :many
@@ -306,21 +405,27 @@ func (q *Queries) ListInterests(ctx context.Context, ideaID int64) ([]ListIntere
 	return items, nil
 }
 
-const listMyIdeas = `-- name: ListMyIdeas :many
+const listParticipating = `-- name: ListParticipating :many
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
-       false AS interested,
+       EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested,
        (SELECT coalesce(json_agg(json_build_object('id', f.id, 'name', f.name, 'avatar_url', f.avatar_url) ORDER BY f.created_at, f.id), '[]')
         FROM (SELECT u2.id, u2.name, u2.avatar_url, n.created_at FROM interests n JOIN users u2 ON u2.id = n.user_id
               WHERE n.idea_id = i.id ORDER BY n.created_at, n.user_id LIMIT 8) f)::json AS interest_faces
-FROM ideas i
+FROM interests p
+JOIN ideas i ON i.id = p.idea_id
 JOIN users u ON u.id = i.author_id
-WHERE i.author_id = $1
-ORDER BY i.created_at DESC, i.id DESC
+WHERE p.user_id = $2
+ORDER BY p.created_at DESC, i.id DESC
 `
 
-type ListMyIdeasRow struct {
+type ListParticipatingParams struct {
+	Viewer int64
+	Member int64
+}
+
+type ListParticipatingRow struct {
 	ID              int64
 	Title           string
 	Description     string
@@ -338,16 +443,16 @@ type ListMyIdeasRow struct {
 	InterestFaces   []byte
 }
 
-// Todas as ideias de quem pede, em qualquer status. Mesmas colunas do ListIdeas; interested sai false (o autor não participa).
-func (q *Queries) ListMyIdeas(ctx context.Context, authorID int64) ([]ListMyIdeasRow, error) {
-	rows, err := q.db.Query(ctx, listMyIdeas, authorID)
+// As ideias em que um aluno marcou "quero participar", em qualquer status, da marcação mais recente para a mais antiga.
+func (q *Queries) ListParticipating(ctx context.Context, arg ListParticipatingParams) ([]ListParticipatingRow, error) {
+	rows, err := q.db.Query(ctx, listParticipating, arg.Viewer, arg.Member)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListMyIdeasRow
+	var items []ListParticipatingRow
 	for rows.Next() {
-		var i ListMyIdeasRow
+		var i ListParticipatingRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Title,
