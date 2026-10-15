@@ -58,27 +58,23 @@
   border-bottom: 1px solid var(--line);
 }
 
-/* Trilha rebaixada com os três status. Toque e foco seguem os botões: 44px no toque, anel de foco global. */
-.segments {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-1);
-  padding: var(--space-1);
-  border-radius: var(--radius-full);
-  background: var(--surface-sunken);
+/* Selos clicáveis do status: as medidas do StatusBadge do card, maiores para o clique (32px, 44px no toque).
+   --tone e --tone-soft vêm da classe de cada status. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
-.segment {
+.chip {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: var(--space-2);
-  min-width: 0;
-  height: 36px;
+  height: 32px;
   padding: 0 var(--space-3);
-  border: 0;
-  border-radius: var(--radius-full);
-  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
   color: var(--ink-muted);
   font: inherit;
   font-size: 13px;
@@ -88,57 +84,65 @@
   touch-action: manipulation;
   transition:
     background-color 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.segment:hover:not([aria-pressed="true"]) {
+.chip:hover:not([aria-pressed="true"]) {
+  border-color: var(--tone);
   color: var(--ink);
-  background: color-mix(in srgb, var(--surface-raised) 55%, transparent);
 }
 
-/* O marcado: fundo soft e texto na cor do status, como o selo do card, levantado da trilha. */
-.segment[aria-pressed="true"] {
+/* O marcado é o próprio selo do card: fundo soft, texto e borda na cor do status, losango cheio. */
+.chip[aria-pressed="true"] {
   cursor: default;
-  box-shadow: var(--shadow-card);
+  border-color: var(--tone);
+  background: var(--tone-soft);
+  color: var(--tone);
 }
 
-.toneOpen[aria-pressed="true"] {
-  background: var(--status-open-soft);
-  color: var(--status-open);
+/* O losango da identidade: vazado nos neutros (só o contorno na cor do status), cheio no marcado. */
+.mark {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--tone);
+  transform: rotate(45deg);
 }
 
-.toneProgress[aria-pressed="true"] {
-  background: var(--status-progress-soft);
-  color: var(--status-progress);
+.chip[aria-pressed="true"] .mark {
+  background: var(--tone);
 }
 
-.toneDone[aria-pressed="true"] {
-  background: var(--status-done-soft);
-  color: var(--status-done);
+.toneOpen {
+  --tone: var(--status-open);
+  --tone-soft: var(--status-open-soft);
 }
 
-/* Salvando: a trilha toda espera, sem trocar o marcado antes da hora. */
-.segment:disabled {
+.toneProgress {
+  --tone: var(--status-progress);
+  --tone-soft: var(--status-progress-soft);
+}
+
+.toneDone {
+  --tone: var(--status-done);
+  --tone-soft: var(--status-done-soft);
+}
+
+/* Salvando: os três esperam, sem trocar o marcado antes da hora. */
+.chip:disabled {
   cursor: progress;
   opacity: 0.7;
 }
 
 @media (pointer: coarse) {
-  .segment {
+  .chip {
     height: 44px;
   }
 
   .profile {
     min-height: 44px;
-  }
-}
-
-/* Celular estreito: só o ícone não basta (o nome é a informação), então os três empilham. */
-@media (max-width: 420px) {
-  .segments {
-    grid-template-columns: 1fr;
-    border-radius: var(--radius-md);
   }
 }
 
