@@ -11,12 +11,6 @@ import { COURSES, SKILLS, type ApiError } from "../../ideas";
 import type { Me } from "../../me";
 import styles from "./editar.module.css";
 
-// O que fazer em cada campo que a API marcar no 400, no lugar do texto técnico dela.
-const FIX: Record<string, string> = {
-  course: "Escolha o curso.",
-  skills: "Escolha até 5 habilidades da lista.",
-};
-
 export function ProfileForm({ me }: { me: Me }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -56,7 +50,8 @@ export function ProfileForm({ me }: { me: Me }) {
     setSending(false);
   }
 
-  const skillsError = fields.skills && FIX.skills;
+  // O que fazer em cada campo que a API marcar no 400, no lugar do texto técnico dela.
+  const skillsError = fields.skills && "Escolha até 5 habilidades da lista.";
   return (
     <section className={`card ${form.card}`} aria-labelledby="editar-perfil">
       <h1 id="editar-perfil" className={form.title}>
@@ -72,7 +67,7 @@ export function ProfileForm({ me }: { me: Me }) {
             label="Curso"
             options={COURSES}
             defaultValue={me.course ?? ""}
-            error={fields.course && FIX.course}
+            error={fields.course && "Escolha o curso."}
           />
           {/* Grupo de caixas: o legend é o rótulo, e a dica (ou o erro) é ligada a cada caixa. */}
           <fieldset className={`${styles.group} ${field.field} ${skillsError ? field.invalid : ""}`}>

@@ -35,12 +35,6 @@
   accent-color: var(--primary);
 }
 
-/* :focus (não só :focus-visible), como nos campos: a caixa mostra o anel também no clique. */
-.option input:focus {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
 @media (pointer: coarse) {
   .option {
     min-height: 44px;
