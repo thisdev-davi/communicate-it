@@ -4,6 +4,8 @@ Objetivo único: o aluno entra com o Discord, ganha uma sessão, e o `POST /api/
 
 Mudou o contrato? Atualiza este arquivo **antes** do código.
 
+> **Atualizado pela [fatia 11](fatia-11-habilidades.md):** o `GET /api/me` ganha `skills`.
+
 ## Fora desta fatia (de propósito)
 
 Escolha de curso no primeiro login e prévia do mural para visitante (fatia 3), perfil, logout de todos os dispositivos, limpeza de sessões expiradas.

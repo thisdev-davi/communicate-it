@@ -4,6 +4,8 @@ Objetivo único: o aluno logado abre o perfil de outro aluno (ou o próprio) e v
 
 Mudou o contrato? Atualiza este arquivo **antes** do código.
 
+> **Atualizado pela [fatia 11](fatia-11-habilidades.md):** a resposta ganha `skills`, e o próprio perfil ganha "Editar perfil".
+
 ## Fora desta fatia (de propósito)
 
 Habilidades (fatia própria, junto com editar o perfil e trocar o curso), seguir pessoas (fica na fila com o feed, como no [PRD](../PRD.md)), @ do Discord, paginação, rostos dos interessados levando ao perfil.

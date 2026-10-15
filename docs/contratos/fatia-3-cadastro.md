@@ -4,6 +4,8 @@ Objetivo único: todo aluno logado tem um curso, e o visitante vê só uma amost
 
 Mudou o contrato? Atualiza este arquivo **antes** do código.
 
+> **Atualizado pela [fatia 11](fatia-11-habilidades.md):** o `PATCH /api/me` aceita `skills` (opcional) e serve também para trocar o curso no `/perfil/editar`.
+
 ## Fora desta fatia (de propósito)
 
 Trocar o curso depois do cadastro (vem com o perfil), habilidades no cadastro, paginação do mural, contagem de quantas ideias o visitante não está vendo.
