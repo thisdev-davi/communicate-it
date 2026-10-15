@@ -187,21 +187,6 @@
   font-weight: 600;
 }
 
-.call {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-1);
-}
-
-/* Fica vazio (e sem altura) até a cópia dar certo; continua no DOM para o role="status" anunciar a mensagem. */
-.copied {
-  margin: 0;
-  font-size: 13px;
-  line-height: 20px;
-  color: var(--status-done);
-}
-
 @media (max-width: 600px) {
   .page {
     padding: var(--space-6) var(--space-4) var(--space-7);

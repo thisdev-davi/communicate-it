@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { ButtonLink } from "../../components/Button";
-import styles from "./ideia.module.css";
+import { ButtonLink } from "./Button";
+import styles from "./CallOnDiscord.module.css";
 
 // Abre o perfil da pessoa no Discord numa nova aba e, no mesmo clique, copia a primeira mensagem para colar na conversa.
 // O Discord não tem link que abra uma conversa já escrita; o perfil (discord.com/users/<id>) é o mais perto disso.
 // Se a cópia falhar (navegador sem permissão), o perfil abre do mesmo jeito.
-export function CallOnDiscord({ discordId, name, ideaTitle }: { discordId: string; name: string; ideaTitle: string }) {
+// Com `ideaTitle`, é o autor chamando um interessado; sem, é alguém chamando a partir do perfil do aluno.
+export function CallOnDiscord({ discordId, name, ideaTitle }: { discordId: string; name: string; ideaTitle?: string }) {
   const [copied, setCopied] = useState(false);
   const firstName = name.trim().split(/\s+/)[0];
-  const message = `Oi, ${firstName}! Vi que você quer participar da ideia “${ideaTitle}” no Comunica FAESA. Bora conversar?`;
+  const message = ideaTitle
+    ? `Oi, ${firstName}! Vi que você quer participar da ideia “${ideaTitle}” no Comunica FAESA. Bora conversar?`
+    : `Oi, ${firstName}! Te achei no Comunica FAESA. Bora conversar?`;
 
   return (
     <div className={styles.call}>

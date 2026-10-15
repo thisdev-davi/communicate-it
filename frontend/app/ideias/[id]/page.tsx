@@ -2,13 +2,13 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Avatar } from "../../components/Avatar";
+import { CallOnDiscord } from "../../components/CallOnDiscord";
 import { IdeaCard } from "../../components/IdeaCard";
 import { InterestButton } from "../../components/InterestButton";
 import { StatePanel } from "../../components/StatePanel";
 import { type Idea, type Interest } from "../../ideas";
 import { getMe } from "../../me";
 import { AuthorPanel } from "./author-panel";
-import { CallOnDiscord } from "./call-on-discord";
 import { getIdea } from "./get-idea";
 import styles from "./ideia.module.css";
 
