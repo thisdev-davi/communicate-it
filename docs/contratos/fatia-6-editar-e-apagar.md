@@ -4,6 +4,8 @@ Objetivo único: o autor corrige a própria ideia ou a apaga de vez, direto da p
 
 Mudou o contrato? Atualiza este arquivo **antes** do código.
 
+> **Atualizado pela [fatia 12](fatia-12-habilidades-da-ideia.md):** o `PUT` aceita `skills`.
+
 ## Fora desta fatia (de propósito)
 
 Trocar o status e travar novos interessados (fatia 7), vitrine de concluídas (fatia 8), página "Minhas ideias" (fatia 9), histórico de edições, arquivar em vez de apagar, avisar os interessados de que a ideia mudou ou sumiu.
