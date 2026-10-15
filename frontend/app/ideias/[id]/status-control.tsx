@@ -2,9 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Button } from "../../components/Button";
+import { Icon, type IconName } from "../../components/Icon";
 import { STATUSES } from "../../ideas";
 import styles from "./ideia.module.css";
+
+// Cada status com o seu ícone e a cor do selo do card (o segmento marcado mostra como o selo vai ficar).
+const LOOK: Record<string, { icon: IconName; tone: string }> = {
+  open: { icon: "door-open", tone: styles.toneOpen },
+  in_progress: { icon: "hammer", tone: styles.toneProgress },
+  done: { icon: "flag", tone: styles.toneDone },
+};
 
 // Status da ideia, só para o autor (docs/contratos/fatia-7-status.md). O clique já salva; quem diz o estado é o servidor:
 // depois de gravar, o router.refresh() redesenha o selo do card, o botão marcado e a trava do "Quero participar".
@@ -38,18 +45,20 @@ export function StatusControl({ ideaId, status }: { ideaId: number; status: stri
       <p id="status-da-ideia" className={styles.label}>
         Status
       </p>
-      <div role="group" aria-labelledby="status-da-ideia" className={styles.actions}>
+      {/* Seletor segmentado: uma trilha com os três; o marcado sobe (fundo do card e sombra) e ganha a cor do status. */}
+      <div role="group" aria-labelledby="status-da-ideia" className={styles.segments}>
         {Object.entries(STATUSES).map(([value, label]) => (
-          <Button
+          <button
             key={value}
-            size="sm"
-            variant={value === status ? "primary" : "secondary"}
+            type="button"
+            className={`${styles.segment} ${LOOK[value].tone}`}
             aria-pressed={value === status}
             disabled={pending}
             onClick={() => value !== status && change(value)}
           >
+            <Icon name={LOOK[value].icon} />
             {label}
-          </Button>
+          </button>
         ))}
       </div>
       <p className={styles.hint}>Só ideias abertas recebem novos interessados. Concluídas vão para a vitrine.</p>
