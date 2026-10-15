@@ -7,7 +7,7 @@ import { ButtonLink } from "./components/Button";
 export function LoginLink() {
   if (usePathname() === "/login") return null;
   return (
-    <ButtonLink href="/login" variant="secondary" size="sm" icon="log-in">
+    <ButtonLink href="/login" variant="secondary" size="sm" pill icon="log-in">
       Entrar
     </ButtonLink>
   );

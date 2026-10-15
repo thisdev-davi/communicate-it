@@ -22,7 +22,7 @@ export function LogoutButton() {
 
   return (
     <>
-      <Button variant="ghost" size="sm" icon="log-out" onClick={logout}>
+      <Button variant="ghost" size="sm" pill icon="log-out" onClick={logout}>
         Sair
       </Button>
       {/* Ocupa uma linha inteira embaixo da barra do cabeçalho (flex-basis: 100%). */}
