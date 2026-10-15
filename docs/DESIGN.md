@@ -20,6 +20,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - **`accent`:** o laranja escurecido, reservado para o convite a participar. É no máximo um por tela ou card, e nunca dois laranjas lado a lado. O texto sobre ele é `on-accent`, nunca branco fixo. A versão `accent-soft` é o fundo de selo de destaque ("Você participa"), e a borda `accent` marca o card de quem participa.
 - **`faesa-orange` e `faesa-amber`:** cores puras da instituição, só para grafismo (o losango, o logo). Não servem para texto nem para fundo de botão: com texto branco ficam abaixo de 4.5:1.
 - **Status da ideia:** `status-open`, `status-progress` e `status-done`, cada um sobre o seu `-soft`, sempre com a palavra junto. A cor nunca carrega a informação sozinha.
+- **Habilidades (`SkillChips`):** chip neutro, `ink` sobre `surface-sunken`, `radius-sm`, 12px / 600, na ordem do catálogo. Sem cor própria: o laranja e as cores de status já têm dono.
 - **Erro:** `danger` sobre `danger-soft`. O mesmo par pinta o botão `danger`, só para ação que destrói ("Apagar ideia").
 - **Bordas:** `line` em divisórias e cards; `line-strong` em controles (campo, botão secundário) e no hover de card clicável.
 
@@ -125,15 +126,16 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
     - o grupo "Status", três selos clicáveis com as medidas do selo do card (32px de altura, 44px no toque; `radius-sm`; 13px/600). O marcado (`aria-pressed`) é o próprio selo do card: `status-*-soft` de fundo, texto e borda em `status-*` e losango cheio. Os outros são neutros (`surface-raised`, borda `line-strong`, texto `ink-muted`) com o losango vazado na cor do status; no hover, a borda ganha a cor do status. O clique já salva. Na tela estreita, os selos quebram linha;
     - a regra "Só ideias abertas recebem novos interessados.";
     - "Editar ideia" (`secondary`) e "Apagar ideia" (`danger`);
-  - embaixo, a seção "Interessados (N)": foto e nome de cada pessoa levam ao perfil dela, e "Chamar no Discord" abre o perfil e copia a primeira mensagem;
+  - embaixo, a seção "Interessados (N)": foto e nome de cada pessoa levam ao perfil dela, as habilidades dela aparecem embaixo do nome, e "Chamar no Discord" abre o perfil e copia a primeira mensagem;
   - "Apagar ideia" confirma na caixa nativa do navegador (`confirm()`), que já é acessível, e depois volta ao mural;
   - ideia inexistente mostra "Ideia não encontrada".
 - **Perfil (`/alunos/<id>`):** só para quem está logado e tem curso.
-  - "Voltar ao mural" e um card com a foto `lg`, o nome (`h1`), o curso por extenso (some sem curso) e, à direita, "Chamar no Discord" com a mensagem "Te achei no Comunica FAESA". O botão não aparece no próprio perfil;
+  - "Voltar ao mural" e um card com a foto `lg`, o nome (`h1`), o curso por extenso (some sem curso), as habilidades e, à direita, "Chamar no Discord" com a mensagem "Te achei no Comunica FAESA". No próprio perfil, o botão é "Editar perfil" (`secondary`), e sem habilidades aparece "Você ainda não adicionou habilidades.";
   - as seções "Ideias postadas (N)" e "Participa de (N)", empilhadas, na grade do mural;
   - vazio é uma frase sob o título da seção ("Ainda não postou ideias."). No próprio perfil, fala com "você" e traz o link para agir ("Postar ideia", "Ver o mural");
   - perfil inexistente mostra "Aluno não encontrado".
 - **Postar (`/ideias/nova`):** só para quem está logado e tem curso. Depois do envio, vai para a página da ideia nova.
+- **Editar perfil (`/perfil/editar`):** a coluna dos formulários, "Voltar ao perfil", o curso (select) e as habilidades (caixas de seleção em duas colunas, uma no celular). "Salvar alterações" volta ao perfil. Nome e foto não se editam: vêm do Discord.
 - **Editar (`/ideias/<id>/editar`):** o mesmo formulário do postar, já preenchido, com "Editar ideia" e "Salvar alterações". Só o autor; quem não é o autor vai para a página da ideia. Depois de salvar, volta para a ideia.
 - **A conversa acontece no Discord.** A interface aponta para lá (perfil, convite do servidor) e não constrói chat.
 
@@ -153,6 +155,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - O erro fica no campo: borda `danger`, `aria-invalid` e a dica trocada pela mensagem (ligada por `aria-describedby`).
 - No envio com erro, o foco vai para o primeiro campo inválido.
 - Durante o envio, o `<fieldset disabled>` trava tudo.
+- Grupo de escolhas múltiplas (habilidades): `fieldset` com `legend` como rótulo, caixas de seleção nativas com `accent-color: primary`, e a dica ligada a cada caixa. No erro, a dica vira a mensagem em `danger`; as caixas não ganham contorno vermelho (seriam 12 de uma vez).
 
 ### Texto da interface
 
@@ -184,7 +187,7 @@ Previsto no artefato, mas sem código ainda. Não é regra até ser implementado
 - Rascunho do formulário de postar em `sessionStorage`, para nada se perder se o aluno sair com texto digitado.
 - @ do Discord do autor no card, só para quem está logado.
 - Modal "Ideia postada" (hoje o envio leva direto à página da ideia).
-- Habilidades (`SkillChip`), abas (`Tabs`) para Comentários/Interessados e `EventCard`: entram com as fatias que precisarem deles.
+- Abas (`Tabs`) para Comentários/Interessados e `EventCard`: entram com as fatias que precisarem deles.
 
 ## Onde o artefato diverge (para atualizar no chat do design system)
 

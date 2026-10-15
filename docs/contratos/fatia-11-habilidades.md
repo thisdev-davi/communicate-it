@@ -71,7 +71,7 @@ Cada pessoa de `interests` (só o autor recebe) ganha `skills`.
 ## Front
 
 - Perfil (`/alunos/[id]`): as habilidades aparecem como chips abaixo do curso.
-  - No próprio perfil, sem habilidades: "Você ainda não adicionou habilidades." com o link "Editar perfil". No perfil dos outros, a linha some.
+  - No próprio perfil, sem habilidades: "Você ainda não adicionou habilidades." (o botão "Editar perfil" está ao lado). No perfil dos outros, a linha some.
   - No próprio perfil, "Editar perfil" (`secondary`) fica no lugar do "Chamar no Discord".
 - `/perfil/editar`: visitante vai para `/login`; logado sem curso vai para `/cadastro`. "Voltar ao perfil", título "Editar perfil", o select de curso e as habilidades como caixas de seleção (`fieldset` com `legend` "Habilidades" e a dica "Escolha até 5."). "Salvar alterações" volta ao perfil. Os erros são os do `400`, no campo.
 - Página da ideia, seção "Interessados (N)": os chips de cada pessoa aparecem embaixo do nome.
