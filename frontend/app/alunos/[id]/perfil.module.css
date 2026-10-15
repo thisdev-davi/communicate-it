@@ -1,0 +1,69 @@
+/* Perfil do aluno: a página e a grade são as do mural (mural.module.css); aqui, o topo e as seções. */
+.back {
+  align-self: flex-start;
+  color: var(--primary);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.loading {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+/* Foto, nome e curso à esquerda; "Chamar no Discord" à direita, descendo para baixo na tela estreita. */
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-5);
+}
+
+.who {
+  display: flex;
+  flex: 1 1 200px;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* Título de página em card: 24px / 700. */
+.name {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.course {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Título de seção: 18px / 700, em caixa normal. */
+.title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.empty {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+.empty a {
+  color: var(--primary);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
