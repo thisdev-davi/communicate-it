@@ -3,8 +3,10 @@ import { notFound, redirect, unstable_rethrow } from "next/navigation";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { Avatar } from "../../components/Avatar";
+import { ButtonLink } from "../../components/Button";
 import { CallOnDiscord } from "../../components/CallOnDiscord";
 import { IdeaCard } from "../../components/IdeaCard";
+import { SkillChips } from "../../components/SkillChips";
 import { StatePanel } from "../../components/StatePanel";
 import { API_URL, COURSES, type Idea } from "../../ideas";
 import { getMe } from "../../me";
@@ -18,6 +20,7 @@ type Profile = {
   avatar_url: string | null;
   course: string | null; // null enquanto o cadastro está pendente
   discord_id: string | null;
+  skills: string[]; // fatia 11, na ordem do catálogo
   ideas: Idea[]; // as que postou
   participating: Idea[]; // as que marcou "Quero participar"
 };
@@ -59,9 +62,21 @@ async function ProfileDetail({ params }: { params: PageProps<"/alunos/[id]">["pa
         <div className={styles.who}>
           <h1 className={styles.name}>{p.name}</h1>
           {p.course && <p className={styles.course}>{COURSES[p.course] ?? p.course}</p>}
+          {p.skills.length > 0 ? (
+            <SkillChips skills={p.skills} className={styles.skills} />
+          ) : (
+            // O botão "Editar perfil" já está ao lado: o convite é só a frase.
+            mine && <p className={styles.empty}>Você ainda não adicionou habilidades.</p>
+          )}
         </div>
-        {/* Sem discord_id só os usuários fictícios do seed local: não há perfil para abrir. */}
-        {!mine && p.discord_id && <CallOnDiscord discordId={p.discord_id} name={p.name} />}
+        {/* No próprio perfil, editar; no dos outros, chamar. Sem discord_id só os usuários fictícios do seed local. */}
+        {mine ? (
+          <ButtonLink href="/perfil/editar" variant="secondary" size="sm">
+            Editar perfil
+          </ButtonLink>
+        ) : (
+          p.discord_id && <CallOnDiscord discordId={p.discord_id} name={p.name} />
+        )}
       </header>
       <Section
         title="Ideias postadas"

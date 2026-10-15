@@ -42,6 +42,10 @@
   color: var(--ink-muted);
 }
 
+.skills {
+  margin-top: var(--space-2);
+}
+
 .section {
   display: flex;
   flex-direction: column;
