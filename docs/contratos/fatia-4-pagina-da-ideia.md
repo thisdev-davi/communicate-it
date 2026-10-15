@@ -7,6 +7,8 @@ Mudou o contrato? Atualiza este arquivo **antes** do código.
 > **Atualizado pela [fatia 5](fatia-5-quero-participar.md):** a resposta ganha `interest_count`, `interested` e, só para o autor, `interests`.
 >
 > **Atualizado pela [fatia 6](fatia-6-editar-e-apagar.md):** o autor ganha o painel "Sua ideia" na página, com editar e apagar.
+>
+> **Atualizado pela [fatia 10](fatia-10-perfil.md):** a foto e o nome do autor no card levam ao perfil dele; o resto do card continua levando à ideia.
 
 ## Fora desta fatia (de propósito)
 
