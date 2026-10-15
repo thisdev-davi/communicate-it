@@ -53,12 +53,12 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - Escala de 4px: `space-1` a `space-8` (4 a 64).
 - Cards têm padding `space-5`, gap interno `space-3`, e `space-6` entre cards na grade.
 - Raios: `radius-sm` em botões, campos e selos; `radius-md` em cards e avisos; `radius-lg` no cartão de login; `radius-full` em avatares e nas pílulas.
-- **Pílula** (`Button` com `pill`, cantos `radius-full`): o "Quero participar", os botões do painel "Sua ideia", o seletor de status e tudo o que é clicável na barra do topo. Os outros botões ("Postar ideia", formulários, login) continuam com `radius-sm`.
+- **Pílula** (`Button` com `pill`, cantos `radius-full`): o "Quero participar" e tudo o que é clicável na barra do topo. Os outros botões ("Postar ideia", painel "Sua ideia", formulários, login) continuam com `radius-sm`.
 - Sombra: `shadow-card` em todo card (classe global `card`). Só a cor da sombra muda com o tema.
 
 ### Grafismo e ícones
 
-- **Losango:** um quadrado girado 45°, usado pequeno, como pontuação. Aparece na marca dos selos de status e no logo. Não encha telas com ele nem ponha texto dentro.
+- **Losango:** um quadrado girado 45°, usado pequeno, como pontuação. Aparece na marca dos selos de status (vazado nos selos clicáveis não marcados) e no logo. Não encha telas com ele nem ponha texto dentro.
 - **Ícones:** Lucide 0.460.0, copiado como SVG em `components/Icon.tsx`, com traço de 1.5. Sem pacote.
   - Para ícone novo, baixe o SVG dessa versão, copie os `d` e converta `<circle>`/`<rect>` em path.
   - Tamanhos: 16px em botões e 14px em selos e metadados.
@@ -76,7 +76,6 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   | `circle-check` | sucesso, "Você participa", "concluída em" |
   | `hand` | também no "Quero participar" (a mão levantada) |
   | `check` | "Interessado" (a mão vira check ao entrar) |
-  | `door-open` / `hammer` / `flag` | status Aberta / Em andamento / Concluída, no seletor do autor |
   | `circle-alert` | erro |
   | `sun` / `moon` | tema |
 
@@ -122,9 +121,9 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   - o interessado lê "Você está na lista. O autor vai te chamar no Discord.";
   - na ideia Em andamento ou Concluída, o botão some para todos, e quem não está na lista lê "Esta ideia não está recebendo novos interessados.";
   - o autor vê o painel "Sua ideia":
-    - o grupo "Status", um seletor segmentado: trilha `surface-sunken` em pílula com os três status, cada um com o seu ícone. O marcado (`aria-pressed`) sobe com `shadow-card` e ganha o par do selo do card (`status-*` sobre `status-*-soft`), e o clique já salva. Até 420px, os três empilham;
+    - o grupo "Status", três selos clicáveis com as medidas do selo do card (32px de altura, 44px no toque; `radius-sm`; 13px/600). O marcado (`aria-pressed`) é o próprio selo do card: `status-*-soft` de fundo, texto e borda em `status-*` e losango cheio. Os outros são neutros (`surface-raised`, borda `line-strong`, texto `ink-muted`) com o losango vazado na cor do status; no hover, a borda ganha a cor do status. O clique já salva. Na tela estreita, os selos quebram linha;
     - a regra "Só ideias abertas recebem novos interessados.";
-    - "Editar ideia" (`secondary`) e "Apagar ideia" (`danger`), em pílula;
+    - "Editar ideia" (`secondary`) e "Apagar ideia" (`danger`);
   - embaixo, a seção "Interessados (N)" com "Chamar no Discord", que abre o perfil e copia a primeira mensagem;
   - "Apagar ideia" confirma na caixa nativa do navegador (`confirm()`), que já é acessível, e depois volta ao mural;
   - ideia inexistente mostra "Ideia não encontrada".
@@ -190,5 +189,5 @@ Previsto no artefato, mas sem código ainda. Não é regra até ser implementado
 - Postar ideia: o artefato prevê o modal "Ideia postada" na volta ao mural. **O front vai para a página da ideia nova.**
 - `IdeaCard`: o artefato tem o "Quero participar" no card e a altura livre. **No front, o card não tem ação, tem altura fixa e usa a sigla do curso.**
 - Título da página da ideia: o artefato tem `title-1` com 28px. **O front usa 24px.**
-- Botões: o artefato só tem `radius-sm`. **O front usa pílula nos alternáveis, no painel do autor e na barra do topo, e o status do autor é um seletor segmentado.**
+- Botões: o artefato só tem `radius-sm`. **O front usa pílula no "Quero participar" e na barra do topo, e o status do autor são selos clicáveis.**
 - Cabeçalho: o artefato alinha o conteúdo da barra à coluna da página. **O front estica a barra de ponta a ponta, com o logo à esquerda.**
