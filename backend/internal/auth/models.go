@@ -40,4 +40,5 @@ type User struct {
 	AvatarUrl *string   `json:"avatar_url"`
 	Course    *string   `json:"course"`
 	CreatedAt time.Time `json:"created_at"`
+	Skills    []string  `json:"skills"`
 }

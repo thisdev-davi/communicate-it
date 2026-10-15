@@ -87,7 +87,7 @@ func routes(a *auth.Handler, h *ideas.Handler) http.Handler {
 	mux.HandleFunc("GET /api/auth/discord/callback", a.Callback)
 	mux.HandleFunc("POST /api/auth/logout", a.Logout)
 	mux.HandleFunc("GET /api/me", a.Me)
-	mux.HandleFunc("PATCH /api/me", a.SetCourse)
+	mux.HandleFunc("PATCH /api/me", a.UpdateMe)
 	mux.HandleFunc("GET /api/me/ideas", h.Mine)
 	mux.HandleFunc("GET /api/users/{id}", h.Profile)
 	mux.HandleFunc("POST /api/ideas", h.Create)

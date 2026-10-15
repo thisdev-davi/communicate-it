@@ -113,8 +113,8 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, u)
 }
 
-// SetCourse grava o curso do aluno logado (cadastro) e devolve o mesmo corpo do Me.
-func (h *Handler) SetCourse(w http.ResponseWriter, r *http.Request) {
+// UpdateMe grava o curso e as habilidades do aluno logado (cadastro e editar perfil) e devolve o mesmo corpo do Me.
+func (h *Handler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	u, err := h.session(r)
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthenticated"})
@@ -126,7 +126,8 @@ func (h *Handler) SetCourse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Course string `json:"course"`
+		Course string   `json:"course"`
+		Skills []string `json:"skills"` // sem o campo no JSON fica nil: as habilidades gravadas não mudam
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes)).Decode(&req); err != nil {
 		var tooBig *http.MaxBytesError
@@ -140,16 +141,21 @@ func (h *Handler) SetCourse(w http.ResponseWriter, r *http.Request) {
 	course := strings.TrimSpace(req.Course)
 	fields := map[string]string{}
 	ideas.CheckOption(fields, "course", course, ideas.Courses)
+	var skills []string // nil vira NULL no SQL, e o coalesce mantém as gravadas
+	if req.Skills != nil {
+		skills = ideas.CleanSkills(fields, "skills", req.Skills)
+	}
 	if len(fields) > 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "validation_failed", "fields": fields})
 		return
 	}
 
-	if err := h.q.SetUserCourse(r.Context(), SetUserCourseParams{ID: u.ID, Course: &course}); err != nil {
-		internalError(w, "set course", err)
+	saved, err := h.q.UpdateMe(r.Context(), UpdateMeParams{ID: u.ID, Course: &course, Skills: skills})
+	if err != nil {
+		internalError(w, "update me", err)
 		return
 	}
-	u.Course = &course
+	u.Course, u.Skills = &course, saved
 	writeJSON(w, http.StatusOK, u)
 }
 

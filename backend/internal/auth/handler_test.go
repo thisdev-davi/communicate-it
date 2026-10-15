@@ -123,7 +123,7 @@ func TestCallbackFailures(t *testing.T) {
 
 func TestMeWithoutSessionIs401(t *testing.T) {
 	h := newTestHandler(nil, nil)
-	for method, hf := range map[string]http.HandlerFunc{"GET": h.Me, "PATCH": h.SetCourse} {
+	for method, hf := range map[string]http.HandlerFunc{"GET": h.Me, "PATCH": h.UpdateMe} {
 		rec := httptest.NewRecorder()
 		hf(rec, httptest.NewRequest(method, "/api/me", strings.NewReader(`{"course":"cc"}`)))
 		if rec.Code != http.StatusUnauthorized || !strings.Contains(rec.Body.String(), `"unauthenticated"`) {
@@ -176,14 +176,14 @@ func TestLoginMeLogout(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPatch, "/api/me", strings.NewReader(body))
 		req.AddCookie(c)
 		rec := httptest.NewRecorder()
-		h.SetCourse(rec, req)
+		h.UpdateMe(rec, req)
 		return rec
 	}
 
 	// Primeiro login: ainda sem curso, vai para o cadastro.
 	session := login("/cadastro")
 	rec := me(session)
-	want := `{"id":1,"name":"Ana","avatar_url":"https://cdn.discordapp.com/avatars/9001/abc.png","course":null}`
+	want := `{"id":1,"name":"Ana","avatar_url":"https://cdn.discordapp.com/avatars/9001/abc.png","course":null,"skills":[]}`
 	if rec.Code != 200 || strings.TrimSpace(rec.Body.String()) != want {
 		t.Fatalf("me: %d %s, quer %s", rec.Code, rec.Body, want)
 	}
