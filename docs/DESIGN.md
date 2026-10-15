@@ -53,12 +53,8 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - Escala de 4px: `space-1` a `space-8` (4 a 64).
 - Cards têm padding `space-5`, gap interno `space-3`, e `space-6` entre cards na grade.
 - Raios: `radius-sm` em botões, campos e selos; `radius-md` em cards e avisos; `radius-lg` no cartão de login; `radius-full` em avatares e nas pílulas.
-<<<<<<< HEAD
 - Avatar: `sm` (28px) no cabeçalho, nos cards e nas listas; `lg` (72px) no topo do perfil. Ao lado do nome escrito (dentro de um link), a foto é `decorative`, para o leitor de tela não ler o nome duas vezes.
-- **Pílula** (`Button` com `pill`, cantos `radius-full`): o "Quero participar", os botões do painel "Sua ideia", o seletor de status e tudo o que é clicável na barra do topo. Os outros botões ("Postar ideia", formulários, login) continuam com `radius-sm`.
-=======
 - **Pílula** (`Button` com `pill`, cantos `radius-full`): o "Quero participar" e tudo o que é clicável na barra do topo. Os outros botões ("Postar ideia", painel "Sua ideia", formulários, login) continuam com `radius-sm`.
->>>>>>> origin/main
 - Sombra: `shadow-card` em todo card (classe global `card`). Só a cor da sombra muda com o tema.
 
 ### Grafismo e ícones
@@ -128,13 +124,8 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   - o autor vê o painel "Sua ideia":
     - o grupo "Status", três selos clicáveis com as medidas do selo do card (32px de altura, 44px no toque; `radius-sm`; 13px/600). O marcado (`aria-pressed`) é o próprio selo do card: `status-*-soft` de fundo, texto e borda em `status-*` e losango cheio. Os outros são neutros (`surface-raised`, borda `line-strong`, texto `ink-muted`) com o losango vazado na cor do status; no hover, a borda ganha a cor do status. O clique já salva. Na tela estreita, os selos quebram linha;
     - a regra "Só ideias abertas recebem novos interessados.";
-<<<<<<< HEAD
-    - "Editar ideia" (`secondary`) e "Apagar ideia" (`danger`), em pílula;
-  - embaixo, a seção "Interessados (N)": foto e nome de cada pessoa levam ao perfil dela, e "Chamar no Discord" abre o perfil no Discord e copia a primeira mensagem;
-=======
     - "Editar ideia" (`secondary`) e "Apagar ideia" (`danger`);
-  - embaixo, a seção "Interessados (N)" com "Chamar no Discord", que abre o perfil e copia a primeira mensagem;
->>>>>>> origin/main
+  - embaixo, a seção "Interessados (N)": foto e nome de cada pessoa levam ao perfil dela, e "Chamar no Discord" abre o perfil e copia a primeira mensagem;
   - "Apagar ideia" confirma na caixa nativa do navegador (`confirm()`), que já é acessível, e depois volta ao mural;
   - ideia inexistente mostra "Ideia não encontrada".
 - **Perfil (`/alunos/<id>`):** só para quem está logado e tem curso.
