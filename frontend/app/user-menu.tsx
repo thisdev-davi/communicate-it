@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Avatar } from "./components/Avatar";
 import styles from "./header.module.css";
 import { LoginLink } from "./login-link";
@@ -10,11 +11,13 @@ export async function UserMenu() {
   if (!me) return <LoginLink />;
   return (
     <>
-      <Avatar name={me.name} src={me.avatar_url} />
-      {/* aria-hidden: o avatar já dá o nome ao leitor de tela */}
-      <span className={styles.name} aria-hidden="true">
-        {me.name}
-      </span>
+      {/* Foto e nome levam ao próprio perfil. O nome escrito dá o nome do link (a foto é decorativa);
+          no celular o nome some da tela, e o "Meu perfil" continua para o leitor de tela. */}
+      <Link href={`/alunos/${me.id}`} className={styles.me}>
+        <Avatar name={me.name} src={me.avatar_url} decorative />
+        <span className="sr-only">Meu perfil: </span>
+        <span className={styles.name}>{me.name}</span>
+      </Link>
       <LogoutButton />
     </>
   );

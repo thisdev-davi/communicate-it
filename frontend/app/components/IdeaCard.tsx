@@ -46,7 +46,8 @@ function Faces({ faces, max, total }: { faces: Face[]; max: number; total: numbe
 }
 
 // Só o que a API devolve hoje: sem habilidades e sem @ do Discord.
-// No mural, o card não tem ação (o título leva à página da ideia, é lá que se participa) e todos têm a mesma altura:
+// No mural, o card não tem ação (o título leva à página da ideia, é lá que se participa; o autor leva ao perfil dele)
+// e todos têm a mesma altura:
 // etiqueta em 1 linha, título em até 2, descrição em 3 e o rodapé sempre embaixo. Quem já participa vê a borda de
 // destaque e o selo "Você participa" na linha do autor.
 // `full` é a própria página da ideia: título vira h1, nada é cortado e não há link (já estamos nela).
@@ -73,9 +74,12 @@ export function IdeaCard({ idea, full = false, action }: { idea: Idea; full?: bo
       <p className={styles.desc}>{idea.description}</p>
       <footer className={styles.foot}>
         <div className={styles.byline}>
+          {/* Segundo destino do card: o autor leva ao perfil. Fica acima do link esticado do título (z-index). */}
           <div className={styles.who}>
-            <Avatar name={idea.author.name} src={idea.author.avatar_url} />
-            <p className={styles.author}>{idea.author.name}</p>
+            <Link href={`/alunos/${idea.author.id}`} className={styles.profile}>
+              <Avatar name={idea.author.name} src={idea.author.avatar_url} decorative />
+              <span className={styles.author}>{idea.author.name}</span>
+            </Link>
           </div>
           {/* Rostos só para quem está logado (o visitante recebe []), antes da ação ou do selo. */}
           <div className={styles.side}>

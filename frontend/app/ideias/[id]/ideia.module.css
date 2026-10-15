@@ -128,6 +128,10 @@
   .segment {
     height: 44px;
   }
+
+  .profile {
+    min-height: 44px;
+  }
 }
 
 /* Celular estreito: só o ícone não basta (o nome é a informação), então os três empilham. */
@@ -180,8 +184,24 @@
   padding-top: 0;
 }
 
-.name {
+/* Foto e nome levam ao perfil da pessoa. */
+.profile {
+  display: flex;
   flex: 1;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.profile:hover .name {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.name {
   min-width: 0;
   overflow-wrap: anywhere;
   font-weight: 600;

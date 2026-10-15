@@ -6,7 +6,8 @@
   gap: var(--space-3);
 }
 
-/* O card todo é clicável sem aninhar elementos interativos: o ::after do link do título cobre o card. */
+/* O card todo é clicável sem aninhar elementos interativos: o ::after do link do título cobre o card.
+   A exceção é o autor (.profile), um link irmão que fica por cima e leva ao perfil. */
 .link {
   color: inherit;
   text-decoration: none;
@@ -150,9 +151,33 @@
 .who {
   display: flex;
   flex: 1 1 140px;
+  min-width: 0;
+}
+
+/* Link do autor para o perfil: irmão do título, não aninhado nele, e acima do ::after esticado para receber o clique.
+   Tem o tamanho da foto + nome: o espaço vazio ao lado continua levando à ideia. */
+.profile {
+  position: relative;
+  z-index: 1;
+  display: flex;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+
+.profile:hover .author {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* No toque, a área cresce para 44px sem mudar o rodapé: o padding entra e a margem negativa devolve o espaço. */
+@media (pointer: coarse) {
+  .profile {
+    padding-block: 8px;
+    margin-block: -8px;
+  }
 }
 
 /* Vagas, interessados e data: ícone + texto, distribuídos na largura do card. */
