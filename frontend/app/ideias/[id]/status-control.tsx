@@ -2,15 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Icon, type IconName } from "../../components/Icon";
 import { STATUSES } from "../../ideas";
 import styles from "./ideia.module.css";
 
-// Cada status com o seu ícone e a cor do selo do card (o segmento marcado mostra como o selo vai ficar).
-const LOOK: Record<string, { icon: IconName; tone: string }> = {
-  open: { icon: "door-open", tone: styles.toneOpen },
-  in_progress: { icon: "hammer", tone: styles.toneProgress },
-  done: { icon: "flag", tone: styles.toneDone },
+// A cor de cada status, a mesma do selo do card (StatusBadge).
+const TONE: Record<string, string> = {
+  open: styles.toneOpen,
+  in_progress: styles.toneProgress,
+  done: styles.toneDone,
 };
 
 // Status da ideia, só para o autor (docs/contratos/fatia-7-status.md). O clique já salva; quem diz o estado é o servidor:
@@ -45,18 +44,18 @@ export function StatusControl({ ideaId, status }: { ideaId: number; status: stri
       <p id="status-da-ideia" className={styles.label}>
         Status
       </p>
-      {/* Seletor segmentado: uma trilha com os três; o marcado sobe (fundo do card e sombra) e ganha a cor do status. */}
-      <div role="group" aria-labelledby="status-da-ideia" className={styles.segments}>
+      {/* Selos clicáveis: o marcado fica igual ao selo do card; os outros, neutros, com o losango na cor do status. */}
+      <div role="group" aria-labelledby="status-da-ideia" className={styles.chips}>
         {Object.entries(STATUSES).map(([value, label]) => (
           <button
             key={value}
             type="button"
-            className={`${styles.segment} ${LOOK[value].tone}`}
+            className={`${styles.chip} ${TONE[value]}`}
             aria-pressed={value === status}
             disabled={pending}
             onClick={() => value !== status && change(value)}
           >
-            <Icon name={LOOK[value].icon} />
+            <span className={styles.mark} aria-hidden="true" />
             {label}
           </button>
         ))}
