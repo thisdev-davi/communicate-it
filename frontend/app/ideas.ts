@@ -32,6 +32,7 @@ export type Interest = {
   name: string;
   avatar_url: string | null;
   discord_id: string | null;
+  skills: string[]; // fatia 11 (docs/contratos/fatia-11-habilidades.md)
 };
 
 export type ApiError = {
@@ -69,4 +70,20 @@ export const CATEGORIES: Record<string, string> = {
   security: "Segurança",
   iot: "IoT / Hardware",
   other: "Outro",
+};
+
+// Catálogo de habilidades da fatia 11 (docs/contratos/fatia-11-habilidades.md), na ordem da API.
+export const SKILLS: Record<string, string> = {
+  frontend: "Front-end",
+  backend: "Back-end",
+  mobile: "Mobile",
+  design: "Design (UI/UX)",
+  data: "Dados",
+  ai: "IA",
+  devops: "DevOps / Infra",
+  games: "Jogos",
+  security: "Segurança",
+  hardware: "Hardware / IoT",
+  testing: "Testes / QA",
+  management: "Gestão / Produto",
 };

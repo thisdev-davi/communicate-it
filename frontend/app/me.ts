@@ -9,6 +9,7 @@ export type Me = {
   name: string;
   avatar_url: string | null;
   course: string | null;
+  skills: string[]; // fatia 11 (docs/contratos/fatia-11-habilidades.md)
 };
 
 // Quem está logado, ou null para visitante. Roda no servidor e repassa o cookie do navegador para a API Go.
