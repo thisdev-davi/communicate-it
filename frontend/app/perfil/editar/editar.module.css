@@ -1,0 +1,54 @@
+/* Grupo "Habilidades" do editar perfil: um fieldset sem a moldura padrão do navegador. */
+.group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* O legend não entra no gap do flex: o espaço até a dica vem daqui. */
+.legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+}
+
+/* Duas colunas de caixas; uma só no celular. */
+.options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1) var(--space-4);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  font-size: 15px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.option input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+/* :focus (não só :focus-visible), como nos campos: a caixa mostra o anel também no clique. */
+.option input:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .option {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 600px) {
+  .options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
