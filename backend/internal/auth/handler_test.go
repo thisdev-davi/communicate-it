@@ -216,6 +216,32 @@ func TestLoginMeLogout(t *testing.T) {
 		t.Fatalf("curso não gravou: %s", body)
 	}
 
+	// Habilidades (fatia 11): gravadas sem repetição e na ordem do catálogo; sem o campo, não mudam; [] limpa.
+	skills := []struct{ name, body, want string }{
+		{"limpa e ordena", `{"course":"ads","skills":["data","backend","data"]}`, `"course":"ads","skills":["backend","data"]}`},
+		{"sem o campo mantém", `{"course":"cc"}`, `"course":"cc","skills":["backend","data"]}`},
+		{"vazio limpa", `{"course":"cc","skills":[]}`, `"course":"cc","skills":[]}`},
+	}
+	for _, tc := range skills {
+		rec := setCourse(session, tc.body)
+		if rec.Code != 200 || !strings.HasSuffix(strings.TrimSpace(rec.Body.String()), tc.want) {
+			t.Errorf("%s: %d %s, quer 200 terminando em %s", tc.name, rec.Code, rec.Body, tc.want)
+		}
+		if body := strings.TrimSpace(me(session).Body.String()); !strings.HasSuffix(body, tc.want) {
+			t.Errorf("%s: GET /api/me = %s, quer terminando em %s", tc.name, body, tc.want)
+		}
+	}
+	badSkills := []struct{ name, body, want string }{
+		{"fora do catálogo", `{"course":"cc","skills":["culinaria"]}`, `{"error":"validation_failed","fields":{"skills":"valor inválido"}}`},
+		{"mais de 5", `{"course":"cc","skills":["frontend","backend","mobile","design","data","ai"]}`, `{"error":"validation_failed","fields":{"skills":"escolha até 5"}}`},
+		{"tipo errado", `{"course":"cc","skills":"backend"}`, `{"error":"invalid_json"}`},
+	}
+	for _, tc := range badSkills {
+		if rec := setCourse(session, tc.body); rec.Code != 400 || strings.TrimSpace(rec.Body.String()) != tc.want {
+			t.Errorf("%s: %d %s, quer 400 %s", tc.name, rec.Code, rec.Body, tc.want)
+		}
+	}
+
 	// Segundo login, já com curso e com outro nome no Discord: vai para o mural, mesmo usuário, nome atualizado.
 	fake.name = "Ana Maria"
 	session = login("/")

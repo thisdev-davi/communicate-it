@@ -642,13 +642,41 @@ func TestProfileRejectsVisitorAndBadID(t *testing.T) {
 	}
 }
 
+func TestCleanSkills(t *testing.T) {
+	cases := []struct {
+		name      string
+		in        []string
+		want      []string
+		wantError string
+	}{
+		{"vazio", []string{}, []string{}, ""},
+		{"ordem do catálogo, sem repetir", []string{"data", "frontend", "data"}, []string{"frontend", "data"}, ""},
+		{"5 é o limite", []string{"frontend", "backend", "mobile", "design", "data"}, []string{"frontend", "backend", "mobile", "design", "data"}, ""},
+		{"6 passa do limite", []string{"frontend", "backend", "mobile", "design", "data", "ai"}, nil, "escolha até 5"},
+		{"repetidas não contam no limite", []string{"ai", "ai", "ai", "ai", "ai", "ai"}, []string{"ai"}, ""},
+		{"fora do catálogo", []string{"backend", "culinaria"}, nil, "valor inválido"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fields := map[string]string{}
+			got := CleanSkills(fields, "skills", tc.in)
+			if fields["skills"] != tc.wantError {
+				t.Fatalf("erro = %q, quer %q", fields["skills"], tc.wantError)
+			}
+			if tc.wantError == "" && !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("= %v, quer %v", got, tc.want)
+			}
+		})
+	}
+}
+
 // Perfil contra Postgres real: dados do aluno, ideias postadas (todas, das mais novas para as mais antigas),
 // as que participa (da marcação mais recente para a mais antiga) e o interested de quem está vendo.
 func TestProfile(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	var anaID, betoID, caioID int64
-	err := pool.QueryRow(ctx, `INSERT INTO users (name, course, discord_id) VALUES ('Ana de Teste', 'cc', '100') RETURNING id`).Scan(&anaID)
+	err := pool.QueryRow(ctx, `INSERT INTO users (name, course, discord_id, skills) VALUES ('Ana de Teste', 'cc', '100', '{backend,data}') RETURNING id`).Scan(&anaID)
 	if err == nil {
 		err = pool.QueryRow(ctx, `INSERT INTO users (name, course) VALUES ('Beto de Teste', 'ads') RETURNING id`).Scan(&betoID)
 	}
@@ -682,7 +710,8 @@ func TestProfile(t *testing.T) {
 		t.Fatalf("perfil da Ana: %d (%s)", rec.Code, rec.Body)
 	}
 	got := decode[profileResponse](t, rec)
-	if got.ID != anaID || got.Name != "Ana de Teste" || got.Course == nil || *got.Course != "cc" || got.DiscordID == nil || *got.DiscordID != "100" {
+	if got.ID != anaID || got.Name != "Ana de Teste" || got.Course == nil || *got.Course != "cc" || got.DiscordID == nil || *got.DiscordID != "100" ||
+		!reflect.DeepEqual(got.Skills, []string{"backend", "data"}) {
 		t.Errorf("dados da Ana: %+v", got)
 	}
 	ids := func(items []ideaResponse) []int64 {
@@ -705,11 +734,17 @@ func TestProfile(t *testing.T) {
 
 	// Sem ideias nem curso: listas vazias ([], não null) e course null.
 	rec = doID(t, caio.Profile, http.MethodGet, strconv.FormatInt(caioID, 10))
-	if body := rec.Body.String(); rec.Code != 200 || !strings.Contains(body, `"course":null`) || !strings.Contains(body, `"ideas":[]`) {
+	if body := rec.Body.String(); rec.Code != 200 || !strings.Contains(body, `"course":null`) || !strings.Contains(body, `"skills":[]`) || !strings.Contains(body, `"ideas":[]`) {
 		t.Errorf("perfil vazio do Caio: %d %s", rec.Code, body)
 	}
 	if got := decode[profileResponse](t, rec); len(got.Participating) != 1 || got.Participating[0].ID != ana1 {
 		t.Errorf("Caio participa de %v, quer [%d]", ids(got.Participating), ana1)
+	}
+
+	// O autor (Beto) vê as habilidades de quem se interessou (Ana).
+	rec = doID(t, NewHandler(pool, loggedAs(betoID)).Get, http.MethodGet, strconv.FormatInt(beto1, 10))
+	if people := decode[ideaResponse](t, rec).Interests; len(people) != 1 || !reflect.DeepEqual(people[0].Skills, []string{"backend", "data"}) {
+		t.Errorf("interessados da beto1: %+v, quer a Ana com [backend data]", people)
 	}
 
 	if rec := doID(t, caio.Profile, http.MethodGet, "999999"); rec.Code != 404 || decode[errorResponse](t, rec).Error != "not_found" {
