@@ -18,6 +18,12 @@ type Event struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+type EventAttendee struct {
+	EventID   int64     `json:"event_id"`
+	UserID    int64     `json:"user_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type Idea struct {
 	ID          int64      `json:"id"`
 	AuthorID    int64      `json:"author_id"`
