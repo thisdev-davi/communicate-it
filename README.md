@@ -21,7 +21,16 @@ Em desenvolvimento, construído em fatias verticais (tela → API → banco).
 - [x] Fatia 7: o autor troca o status da ideia; só ideia aberta recebe novos interessados
 - [x] Fatia 8: vitrine de projetos concluídos (`/concluidas`) e navegação no cabeçalho
 - [x] Fatia 9: "Minhas ideias", com todas as ideias do aluno em qualquer status
-- [ ] Demais funcionalidades do MVP (ver [PRD](docs/PRD.md))
+- [x] Fatia 10: perfil do aluno (`/alunos/<id>`), com as ideias que postou e as de que participa
+- [x] Fatia 11: habilidades no perfil (até 5, de um catálogo fixo)
+- [x] Fatia 12: habilidades procuradas na ideia, com destaque das que você tem
+- [x] Fatia 13: agenda de eventos (`/eventos`) e criar evento
+- [x] Fatia 14: página do evento, "Vou participar" e lista de quem vai
+- [x] Fatia 15: cargo de moderação lido do Discord; o moderador apaga qualquer ideia
+- [ ] Fatia 16: o criador e o moderador editam e apagam o evento (**próxima**)
+- [ ] Ainda do MVP: comentários nas ideias, filtros e busca (ver [PRD](docs/PRD.md))
+
+Cada fatia tem o contrato em [`docs/contratos/`](docs/contratos/); a fase de eventos (13 a 16) está detalhada no [PRD](docs/PRD.md#fase-de-eventos), com a situação de cada fatia e o próximo passo.
 
 ## Stack
 

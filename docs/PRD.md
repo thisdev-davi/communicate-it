@@ -111,12 +111,17 @@ Um aluno posta várias ideias; cada ideia reúne vários interessados; perfis e 
 
 Decidida em 16 de outubro de 2026. Quatro fatias, nesta ordem, cada uma com o próprio contrato em `docs/contratos/` e um PR com base na `main`:
 
-| fatia | conteúdo |
-|---|---|
-| 13 — agenda de eventos | tabela `events`, criar evento, `/eventos` com os próximos, `/eventos/novo`, "Eventos" na barra |
-| 14 — página do evento e "vou" | tabela `event_attendees`, `/eventos/<id>`, confirmar e desistir da presença, lista de quem vai, contagem nos cards |
-| 15 — cargo de moderação | `users.is_moderator` lido dos cargos do Discord no login, `is_moderator` no `/api/me`, moderador apaga qualquer ideia |
-| 16 — editar e apagar evento | criador e moderador editam e apagam, `/eventos/<id>/editar` |
+| fatia | conteúdo | situação |
+|---|---|---|
+| 13 — agenda de eventos | tabela `events`, criar evento, `/eventos` com os próximos, `/eventos/novo`, "Eventos" na barra | feita ([contrato](contratos/fatia-13-agenda-de-eventos.md), PR #30) |
+| 14 — página do evento e "vou" | tabela `event_attendees`, `/eventos/<id>`, confirmar e desistir da presença, lista de quem vai, contagem nos cards | feita ([contrato](contratos/fatia-14-presenca-em-eventos.md), PR #31) |
+| 15 — cargo de moderação | `users.is_moderator` lido dos cargos do Discord no login, `is_moderator` no `/api/me`, moderador apaga qualquer ideia | feita ([contrato](contratos/fatia-15-cargo-de-moderacao.md)) |
+| 16 — editar e apagar evento | criador e moderador editam e apagam, `/eventos/<id>/editar` | **próxima**: falta o contrato e o código |
+
+**Onde estamos e o que falta**
+
+- Fatia 16: escrever `docs/contratos/fatia-16-editar-e-apagar-evento.md` no molde da [fatia 6](contratos/fatia-6-editar-e-apagar.md). `PUT /api/events/{id}` (mesma validação do `POST`, inclusive "no futuro") e `DELETE /api/events/{id}`, para o criador ou quem tem `is_moderator` (os outros: `403 not_author`); a presença vai junto no `DELETE` (`ON DELETE CASCADE`). No front, o painel com "Editar evento" e "Apagar evento" na página do evento e `/eventos/<id>/editar` com o formulário preenchido (o `datetime-local` recebe a hora de Brasília). O `events` precisa de uma query `IsModerator`, como a do pacote `ideas`.
+- Deploy: todo merge na `main` sobe sozinho e roda as migrations. Para a moderação valer em produção, o root precisa preencher `DISCORD_MOD_ROLE_IDS` no `.env` da VPS e copiar o `compose.prod.yaml` novo (README, "Mudou o `compose.prod.yaml`"). Sem isso, a API sobe normalmente, só que sem moderadores.
 
 **Evento**
 
