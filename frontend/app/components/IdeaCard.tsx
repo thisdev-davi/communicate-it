@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { CATEGORIES, COURSE_SHORT, COURSES, STATUSES, type Face, type Idea } from "../ideas";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
+import { SkillChips } from "./SkillChips";
 import styles from "./IdeaCard.module.css";
 
 const TONE: Record<string, string> = {
@@ -45,14 +46,15 @@ function Faces({ faces, max, total }: { faces: Face[]; max: number; total: numbe
   );
 }
 
-// Só o que a API devolve hoje: sem habilidades e sem @ do Discord.
+// Só o que a API devolve hoje: sem o @ do Discord.
 // No mural, o card não tem ação (o título leva à página da ideia, é lá que se participa; o autor leva ao perfil dele)
 // e todos têm a mesma altura:
 // etiqueta em 1 linha, título em até 2, descrição em 3 e o rodapé sempre embaixo. Quem já participa vê a borda de
 // destaque e o selo "Você participa" na linha do autor.
 // `full` é a própria página da ideia: título vira h1, nada é cortado e não há link (já estamos nela).
 // `action` ocupa a direita da linha do autor, depois dos rostos: a página põe ali o "Quero participar".
-export function IdeaCard({ idea, full = false, action }: { idea: Idea; full?: boolean; action?: ReactNode }) {
+// `have` são as habilidades de quem vê (do perfil): as procuradas que batem aparecem destacadas.
+export function IdeaCard({ idea, full = false, action, have }: { idea: Idea; full?: boolean; action?: ReactNode; have?: string[] }) {
   const Title = full ? "h1" : "h3";
   return (
     <article className={[`card`, styles.card, full && styles.full, idea.interested && styles.interested].filter(Boolean).join(" ")}>
@@ -72,6 +74,19 @@ export function IdeaCard({ idea, full = false, action }: { idea: Idea; full?: bo
         )}
       </Title>
       <p className={styles.desc}>{idea.description}</p>
+      {/* No mural a linha existe sempre, mesmo vazia, para os cards terem a mesma altura; na página, só se houver. */}
+      {full ? (
+        idea.skills.length > 0 && (
+          <div className={styles.wanted}>
+            <span className={styles.wantedLabel}>Procura</span>
+            <SkillChips skills={idea.skills} label="Habilidades procuradas" have={have} />
+          </div>
+        )
+      ) : (
+        <div className={styles.wanted}>
+          {idea.skills.length > 0 && <SkillChips skills={idea.skills} label="Habilidades procuradas" have={have} max={2} className={styles.oneLine} />}
+        </div>
+      )}
       <footer className={styles.foot}>
         <div className={styles.byline}>
           {/* Segundo destino do card: o autor leva ao perfil. Fica acima do link esticado do título (z-index). */}
