@@ -57,7 +57,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - Cards têm padding `space-5`, gap interno `space-3`, e `space-6` entre cards na grade.
 - Raios: `radius-sm` em botões, campos e selos; `radius-md` em cards e avisos; `radius-lg` no cartão de login; `radius-full` em avatares e nas pílulas.
 - Avatar: `sm` (28px) no cabeçalho, nos cards e nas listas; `lg` (72px) no topo do perfil. Ao lado do nome escrito (dentro de um link), a foto é `decorative`, para o leitor de tela não ler o nome duas vezes.
-- **Pílula** (`Button` com `pill`, cantos `radius-full`): o "Quero participar" e tudo o que é clicável na barra do topo. Os outros botões ("Postar ideia", painel "Sua ideia", formulários, login) continuam com `radius-sm`.
+- **Pílula** (`Button` com `pill`, cantos `radius-full`): o "Quero participar", o "Vou participar" e tudo o que é clicável na barra do topo. Os outros botões ("Postar ideia", painel "Sua ideia", formulários, login) continuam com `radius-sm`.
 - Sombra: `shadow-card` em todo card (classe global `card`). Só a cor da sombra muda com o tema.
 
 ### Grafismo e ícones
@@ -74,15 +74,15 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   | `log-in` | Entrar |
   | `log-out` | Sair |
   | `lightbulb` | Postar ideia |
-  | `users` | vagas |
+  | `users` | vagas, confirmados do evento |
   | `hand` | interessados |
   | `calendar` | data |
   | `calendar-plus` | Criar evento |
   | `clock` | hora do evento |
   | `map-pin` | local do evento |
-  | `circle-check` | sucesso, "Você participa", "concluída em" |
-  | `hand` | também no "Quero participar" (a mão levantada) |
-  | `check` | "Interessado" (a mão vira check ao entrar) |
+  | `circle-check` | sucesso, "Você participa", "Você vai", "concluída em" |
+  | `hand` | também no "Quero participar" e no "Vou participar" (a mão levantada) |
+  | `check` | "Interessado" e "Presença confirmada" (a mão vira check ao entrar) |
   | `circle-alert` | erro |
   | `sun` / `moon` | tema |
 
@@ -117,9 +117,11 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 ### Cards de evento
 
 - **`EventCard`**, na mesma grade do mural: à esquerda, o bloco de data (dia 28px / 800 e mês curto 11px / 700 em caixa alta, `on-primary` sobre `primary`, 64px de largura, `radius-sm`) com o losango `faesa-amber` saindo da borda direita.
-- À direita: título em até 2 linhas; a hora ("sex, 19:00", com `clock`) e o local (`map-pin`), em `ink` 13px com o ícone em `ink-muted`; a descrição em até 3 linhas; e, no rodapé (sempre embaixo, com a divisória `line`), a foto e o nome do organizador, que levam ao perfil dele.
+- À direita: título em até 2 linhas; a hora ("sex, 19:00", com `clock`), o local (`map-pin`) e os confirmados ("2 confirmados", com `users`), em `ink` 13px com o ícone em `ink-muted`; a descrição em até 3 linhas; e, no rodapé (sempre embaixo, com a divisória `line`), a foto e o nome do organizador, que levam ao perfil dele.
 - Data e hora sempre no horário de Brasília (`timeZone: "America/Sao_Paulo"`). O bloco de data é `aria-hidden`: o leitor de tela ouve a data por extenso na linha da hora ("20 de outubro, ter, 19:00"), e "Organizado por" antes do nome.
-- O card não tem ação, como o `IdeaCard`. O único destino, por enquanto, é o perfil do organizador.
+- **O card não tem ação e tem dois destinos**, como o `IdeaCard`: o título é o link esticado para a página do evento, e o organizador é o link para o perfil, por cima do `::after`.
+- Quem confirmou presença vê a borda `accent` e o selo "Você vai" (`accent-soft`, `circle-check`) à direita do organizador; se não couber, o selo desce.
+- Na página do evento, o card vem inteiro (`full`): título `h1` de 24px, descrição em 15px `ink`, nada cortado e sem link no título. O botão de presença ocupa o lugar do selo.
 
 ### Páginas e fluxos
 
@@ -129,7 +131,13 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   - quem está logado vê tudo e o botão "Postar ideia";
   - logado sem curso vai para `/cadastro`.
 - **Eventos (`/eventos`):** a agenda, de hoje em diante e do mais próximo, para todo mundo (o visitante vê a lista inteira e o convite para entrar e criar). Topo como o do mural, com "Criar evento" à direita só para quem está logado. Vazio: "Nenhum evento marcado". Logado sem curso vai para `/cadastro`.
-- **Criar evento (`/eventos/novo`):** só para quem está logado e tem curso. Coluna dos formulários, com título, descrição, "Data e hora" (`<input type="datetime-local">` nativo, sem `min`: os erros são os da API) e local lado a lado (empilhados no celular). O texto de apoio avisa que o horário é o de Brasília. Depois de criar, volta para `/eventos`.
+- **Página do evento (`/eventos/<id>`):** para todo mundo. "Voltar aos eventos", o card `full` e:
+  - para quem está logado, o "Vou participar" (pílula `accent` com a mão levantada), que vira "Presença confirmada" (pílula `joined` com `check`, `aria-pressed`). É o mesmo `JoinButton` do "Quero participar", com outra URL e outros rótulos;
+  - para o visitante, o convite "Entre com o Discord para confirmar presença e ver quem vai.";
+  - evento que já passou (o dia dele acabou, no horário de Brasília): sem botão, com "Este evento já aconteceu.";
+  - embaixo, só para quem está logado, a seção "Quem vai (N)": foto e nome de cada pessoa, em ordem de chegada, levando ao perfil. Sem "Chamar no Discord";
+  - evento inexistente mostra "Evento não encontrado".
+- **Criar evento (`/eventos/novo`):** só para quem está logado e tem curso. Coluna dos formulários, com título, descrição, "Data e hora" (`<input type="datetime-local">` nativo, sem `min`: os erros são os da API) e local lado a lado (empilhados no celular). O texto de apoio avisa que o horário é o de Brasília. Depois de criar, vai para a página do evento novo.
 - **Concluídos (`/concluidas`):** a vitrine, com a mesma grade do mural e as concluídas mais recentes primeiro. O visitante vê a prévia de 3 e o convite para entrar. É onde o build in public vai entrar.
 - **Minhas ideias (`/minhas-ideias`):** só para quem está logado. Todas as ideias do aluno, em qualquer status, na mesma grade do mural, com "Postar ideia" no topo. Os controles ficam na página de cada ideia.
 - **Página da ideia (`/ideias/<id>`):**
@@ -203,7 +211,6 @@ Previsto no artefato, mas sem código ainda. Não é regra até ser implementado
 - @ do Discord do autor no card, só para quem está logado.
 - Modal "Ideia postada" (hoje o envio leva direto à página da ideia).
 - Abas (`Tabs`) para Comentários/Interessados: entram com a fatia que precisar delas.
-- Botão de presença no evento: entra na fatia 14, na página do evento.
 
 ## Onde o artefato diverge (para atualizar no chat do design system)
 
@@ -215,5 +222,6 @@ Previsto no artefato, mas sem código ainda. Não é regra até ser implementado
 - `IdeaCard`: o artefato tem o "Quero participar" no card e a altura livre. **No front, o card não tem ação, tem altura fixa, usa a sigla do curso e o autor é um link para o perfil.**
 - Título da página da ideia: o artefato tem `title-1` com 28px. **O front usa 24px.**
 - Botões: o artefato só tem `radius-sm`. **O front usa pílula no "Quero participar" e na barra do topo, e o status do autor são selos clicáveis.**
-- `EventCard`: o artefato tem o selo de tipo ("Hackathon"), a hora como "19h", a contagem de confirmados e o botão de presença no card. **No front, o evento não tem tipo, a hora sai como "19:00", o card mostra local, descrição e organizador, e não tem ação.**
+- `EventCard`: o artefato tem o selo de tipo ("Hackathon"), a hora como "19h" e o botão de presença no card. **No front, o evento não tem tipo, a hora sai como "19:00", o card mostra local, descrição e organizador, e não tem ação: a presença se confirma na página do evento.**
+- Botão de presença: o artefato usa "Vou participar" em `secondary` e "Presença confirmada" em `primary`. **O front usa as pílulas do "Quero participar" (`accent` e `joined`)**: o `accent` é a cor do convite a participar.
 - Cabeçalho: o artefato alinha o conteúdo da barra à coluna da página. **O front estica a barra de ponta a ponta, com o logo à esquerda.**
