@@ -8,6 +8,16 @@ import (
 	"time"
 )
 
+type Event struct {
+	ID          int64
+	AuthorID    int64
+	Title       string
+	Description string
+	StartsAt    time.Time
+	Location    string
+	CreatedAt   time.Time
+}
+
 type Idea struct {
 	ID          int64
 	AuthorID    int64

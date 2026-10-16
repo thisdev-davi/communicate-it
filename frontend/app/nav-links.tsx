@@ -6,6 +6,7 @@ import styles from "./header.module.css";
 
 const LINKS = [
   { href: "/", label: "Mural" },
+  { href: "/eventos", label: "Eventos" },
   { href: "/concluidas", label: "Concluídos" },
 ];
 const MINE = { href: "/minhas-ideias", label: "Minhas ideias" }; // só para quem está logado

@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/thisdev-davi/comunica-faesa/backend/internal/auth"
+	"github.com/thisdev-davi/comunica-faesa/backend/internal/events"
 	"github.com/thisdev-davi/comunica-faesa/backend/internal/ideas"
 )
 
@@ -58,7 +59,7 @@ func run() error {
 	a := auth.NewHandler(pool, clientID, clientSecret, redirectURL, guildID)
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           routes(a, ideas.NewHandler(pool, a.UserID)),
+		Handler:           routes(a, ideas.NewHandler(pool, a.UserID), events.NewHandler(pool, a.UserID)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	slog.Info("api no ar", "addr", srv.Addr)
@@ -81,7 +82,7 @@ func run() error {
 // que o navegador marca como vindo de outro site (Sec-Fetch-Site) leva 403 antes de chegar no handler.
 // O SameSite=Lax do cookie não basta aqui: o sslip.io não está na Public Suffix List, então para o
 // navegador qualquer *.sslip.io é "o mesmo site" e mandaria o cookie junto.
-func routes(a *auth.Handler, h *ideas.Handler) http.Handler {
+func routes(a *auth.Handler, h *ideas.Handler, ev *events.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/auth/discord", a.Login)
 	mux.HandleFunc("GET /api/auth/discord/callback", a.Callback)
@@ -98,6 +99,8 @@ func routes(a *auth.Handler, h *ideas.Handler) http.Handler {
 	mux.HandleFunc("PUT /api/ideas/{id}/status", h.SetStatus)
 	mux.HandleFunc("PUT /api/ideas/{id}/interest", h.PutInterest)
 	mux.HandleFunc("DELETE /api/ideas/{id}/interest", h.DeleteInterest)
+	mux.HandleFunc("POST /api/events", ev.Create)
+	mux.HandleFunc("GET /api/events", ev.List)
 	p := http.NewCrossOriginProtection()
 	p.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

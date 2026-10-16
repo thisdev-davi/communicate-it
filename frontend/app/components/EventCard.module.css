@@ -1,0 +1,152 @@
+/* Regras do .cf-event do bundle.css do design system, com o texto e o rodapé do IdeaCard. */
+.card {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+/* Bloco de data: dia grande e mês curto em `primary`, com o losango âmbar saindo da borda direita (grafismo). */
+.date {
+  position: relative;
+  flex: none;
+  width: 64px;
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: var(--on-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.date::after {
+  content: "";
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  background: var(--faesa-amber);
+  transform: rotate(45deg);
+}
+
+.day {
+  font-size: 28px;
+  line-height: 32px;
+  font-weight: 800;
+}
+
+.month {
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* A coluna do texto estica até o fim do card: o rodapé fica embaixo e os cards da mesma linha se alinham. */
+.body {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.title {
+  margin: 0;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 700;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--ink);
+}
+
+.facts li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.facts svg {
+  flex: none;
+  color: var(--ink-muted);
+}
+
+.desc {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-line; /* respeita as quebras de linha que o organizador digitou */
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--ink-muted);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-top: var(--space-3);
+  margin-top: auto;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+
+.profile:hover .author {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.author {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* No toque, a área do link cresce para 44px sem mudar o rodapé. */
+@media (pointer: coarse) {
+  .profile {
+    padding-block: 8px;
+    margin-block: -8px;
+  }
+}

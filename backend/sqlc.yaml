@@ -38,3 +38,15 @@ sql:
               import: time
               type: Time
               pointer: true
+  - engine: postgresql
+    schema: db/migrations
+    queries: db/queries/events.sql
+    gen:
+      go:
+        package: events
+        out: internal/events
+        sql_package: pgx/v5
+        emit_pointers_for_null_types: true # avatar_url nulo vira *string, que sai como null no JSON
+        overrides:
+          - db_type: timestamptz
+            go_type: time.Time

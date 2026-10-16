@@ -12,3 +12,10 @@ SELECT sha256(convert_to('sessao-local-de-teste', 'UTF8')), id, now() + interval
 FROM users WHERE name = 'Usuário de Teste' AND discord_id IS NULL
 ORDER BY id LIMIT 1
 ON CONFLICT (token_hash) DO UPDATE SET expires_at = EXCLUDED.expires_at; -- rodar o seed de novo renova a sessão
+
+-- Um evento fictício daqui a uma semana, às 19h de Brasília (22h UTC), para a agenda não começar vazia.
+INSERT INTO events (author_id, title, description, starts_at, location)
+SELECT id, 'Noite de trabalho do app de carona', 'Evento fictício de exemplo, criado pelo seed local.',
+       date_trunc('day', now()) + interval '7 days 22 hours', 'Bloco B, sala 204'
+FROM users WHERE name = 'Usuário de Teste' AND discord_id IS NULL
+ORDER BY id LIMIT 1;
