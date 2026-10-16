@@ -141,6 +141,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
     - o grupo "Status", três selos clicáveis com as medidas do selo do card (32px de altura, 44px no toque; `radius-sm`; 13px/600). O marcado (`aria-pressed`) é o próprio selo do card: `status-*-soft` de fundo, texto e borda em `status-*` e losango cheio. Os outros são neutros (`surface-raised`, borda `line-strong`, texto `ink-muted`) com o losango vazado na cor do status; no hover, a borda ganha a cor do status. O clique já salva. Na tela estreita, os selos quebram linha;
     - a regra "Só ideias abertas recebem novos interessados.";
     - "Editar ideia" (`secondary`) e "Apagar ideia" (`danger`);
+  - o moderador que não é o autor (`is_moderator` do `/api/me`) vê, no lugar do painel do autor, o painel "Moderação": a frase "Você pode apagar esta ideia porque tem o cargo de moderação no Discord." e só o "Apagar ideia" (`danger`), com a mesma confirmação. Editar e trocar o status ficam só com o autor;
   - embaixo, a seção "Interessados (N)": foto e nome de cada pessoa levam ao perfil dela, as habilidades dela aparecem embaixo do nome, e "Chamar no Discord" abre o perfil e copia a primeira mensagem;
   - "Apagar ideia" confirma na caixa nativa do navegador (`confirm()`), que já é acessível, e depois volta ao mural;
   - ideia inexistente mostra "Ideia não encontrada".
