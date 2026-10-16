@@ -52,7 +52,7 @@ export async function IdeaList({
         <ul className={styles.grid}>
           {items.map((idea) => (
             <li key={idea.id}>
-              <IdeaCard idea={idea} />
+              <IdeaCard idea={idea} have={me?.skills} />
             </li>
           ))}
         </ul>

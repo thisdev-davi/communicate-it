@@ -3,13 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../components/Button";
-import field from "../../components/Field.module.css";
 import { Notice } from "../../components/Notice";
 import { Select } from "../../components/Select";
+import { SkillsField } from "../../components/SkillsField";
 import form from "../../idea-form.module.css";
-import { COURSES, SKILLS, type ApiError } from "../../ideas";
+import { COURSES, type ApiError } from "../../ideas";
 import type { Me } from "../../me";
-import styles from "./editar.module.css";
 
 export function ProfileForm({ me }: { me: Me }) {
   const router = useRouter();
@@ -50,8 +49,6 @@ export function ProfileForm({ me }: { me: Me }) {
     setSending(false);
   }
 
-  // O que fazer em cada campo que a API marcar no 400, no lugar do texto técnico dela.
-  const skillsError = fields.skills && "Escolha até 5 habilidades da lista.";
   return (
     <section className={`card ${form.card}`} aria-labelledby="editar-perfil">
       <h1 id="editar-perfil" className={form.title}>
@@ -69,28 +66,7 @@ export function ProfileForm({ me }: { me: Me }) {
             defaultValue={me.course ?? ""}
             error={fields.course && "Escolha o curso."}
           />
-          {/* Grupo de caixas: o legend é o rótulo, e a dica (ou o erro) é ligada a cada caixa. */}
-          <fieldset className={`${styles.group} ${field.field} ${skillsError ? field.invalid : ""}`}>
-            <legend className={`${field.label} ${styles.legend}`}>Habilidades</legend>
-            <p id="skills-hint" className={field.hint}>
-              {skillsError || "Escolha até 5."}
-            </p>
-            <div className={styles.options}>
-              {Object.entries(SKILLS).map(([value, label]) => (
-                <label key={value} className={styles.option}>
-                  <input
-                    type="checkbox"
-                    name="skills"
-                    value={value}
-                    defaultChecked={me.skills.includes(value)}
-                    aria-invalid={skillsError ? true : undefined}
-                    aria-describedby="skills-hint"
-                  />
-                  {label}
-                </label>
-              ))}
-            </div>
-          </fieldset>
+          <SkillsField label="Habilidades" hint="Escolha até 5." defaultValue={me.skills} error={fields.skills && "Escolha até 5 habilidades da lista."} />
           <div className={form.actions}>
             <Button type="submit">{sending ? "Salvando…" : "Salvar alterações"}</Button>
           </div>

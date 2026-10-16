@@ -104,6 +104,28 @@
   text-overflow: ellipsis;
 }
 
+/* Habilidades procuradas, entre a descrição e o rodapé. No mural, uma linha de 24px reservada mesmo vazia, com até
+   2 chips e "+N": é o que cabe nos 260px úteis do card mais estreito com os rótulos mais longos. */
+.wanted {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 24px;
+}
+
+.oneLine {
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.wantedLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
 /* Página da ideia: o mesmo card, com título e texto maiores. */
 .full .title {
   font-size: 24px;

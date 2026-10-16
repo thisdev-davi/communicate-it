@@ -75,6 +75,9 @@ func TestCreateRejectsBadInput(t *testing.T) {
 		{"caractere nulo", 1, `{"title":"abc\u0000","description":"x","course":"cc","category":"web","slots":1}`, 400, "validation_failed", []string{"title"}},
 		{"curso e categoria fora da lista", 1, `{"title":"abc","description":"x","course":"med","category":"culinaria","slots":1}`, 400, "validation_failed", []string{"course", "category"}},
 		{"vagas acima de 20", 1, `{"title":"abc","description":"x","course":"cc","category":"web","slots":21}`, 400, "validation_failed", []string{"slots"}},
+		{"habilidade fora do catálogo", 1, `{"title":"abc","description":"x","course":"cc","category":"web","slots":1,"skills":["culinaria"]}`, 400, "validation_failed", []string{"skills"}},
+		{"mais de 5 habilidades", 1, `{"title":"abc","description":"x","course":"cc","category":"web","slots":1,"skills":["frontend","backend","mobile","design","data","ai"]}`, 400, "validation_failed", []string{"skills"}},
+		{"habilidades com tipo errado", 1, `{"title":"abc","description":"x","course":"cc","category":"web","slots":1,"skills":"web"}`, 400, "invalid_json", nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -639,6 +642,40 @@ func TestProfileRejectsVisitorAndBadID(t *testing.T) {
 				t.Errorf("status = %d (%s), quer %d %s", rec.Code, rec.Body, tc.wantStatus, tc.wantError)
 			}
 		})
+	}
+}
+
+// Habilidades procuradas contra Postgres real: o POST limpa e ordena, sem o campo fica [], o PUT troca,
+// e a lista chega no GET, no mural e em "Minhas ideias".
+func TestIdeaSkills(t *testing.T) {
+	pool := testDB(t)
+	var authorID int64
+	if err := pool.QueryRow(context.Background(), `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID); err != nil {
+		t.Fatal(err)
+	}
+	h := NewHandler(pool, loggedAs(authorID))
+
+	rec := do(t, h.Create, http.MethodPost, `{"title":"App de carona","description":"x","course":"cc","category":"web","slots":2,"skills":["design","frontend","design"]}`)
+	if got := decode[ideaResponse](t, rec); rec.Code != 201 || !reflect.DeepEqual(got.Skills, []string{"frontend", "design"}) {
+		t.Fatalf("POST com habilidades: %d %s, quer [frontend design]", rec.Code, rec.Body)
+	}
+	if rec := do(t, h.Create, http.MethodPost, validBody); rec.Code != 201 || !strings.Contains(rec.Body.String(), `"skills":[]`) {
+		t.Errorf("POST sem habilidades: %d %s, quer skills []", rec.Code, rec.Body)
+	}
+
+	id := strconv.FormatInt(decode[struct{ Items []ideaResponse }](t, do(t, h.List, http.MethodGet, "")).Items[1].ID, 10) // a primeira postada
+	rec = doIDBody(t, h.Update, http.MethodPut, id, `{"title":"App de carona","description":"x","course":"cc","category":"web","slots":2,"skills":["data"]}`)
+	if got := decode[ideaResponse](t, rec); rec.Code != 200 || !reflect.DeepEqual(got.Skills, []string{"data"}) {
+		t.Fatalf("PUT: %d %s, quer [data]", rec.Code, rec.Body)
+	}
+	if got := decode[ideaResponse](t, doID(t, h.Get, http.MethodGet, id)); !reflect.DeepEqual(got.Skills, []string{"data"}) {
+		t.Errorf("GET depois do PUT: %v, quer [data]", got.Skills)
+	}
+	for name, hf := range map[string]http.HandlerFunc{"mural": h.List, "minhas": h.Mine} {
+		items := decode[struct{ Items []ideaResponse }](t, do(t, hf, http.MethodGet, "")).Items
+		if len(items) != 2 || !reflect.DeepEqual(items[1].Skills, []string{"data"}) || items[0].Skills == nil {
+			t.Errorf("%s: %+v, quer a segunda com [data] e a primeira com []", name, items)
+		}
 	}
 }
 

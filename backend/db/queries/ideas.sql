@@ -5,11 +5,11 @@
 -- name: CreateIdea :one
 -- Ideia recém-criada ainda não tem interessados: as duas colunas saem fixas.
 WITH i AS (
-    INSERT INTO ideas (author_id, title, description, course, category, slots)
-    VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO ideas (author_id, title, description, course, category, slots, skills)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING *
 )
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        0::bigint AS interest_count, false AS interested, '[]'::json AS interest_faces
 FROM i
@@ -19,7 +19,7 @@ JOIN users u ON u.id = i.author_id;
 -- done escolhe a lista: false é o mural (abertas e em andamento), true é a vitrine (concluídas).
 -- A vitrine ordena pela conclusão; no mural done_at é sempre NULL, e a ordem cai na data de postagem.
 -- max NULL = sem limite (LIMIT NULL é o mesmo que não ter LIMIT); o visitante recebe só uma prévia.
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested,
@@ -33,7 +33,7 @@ ORDER BY i.done_at DESC NULLS LAST, i.created_at DESC, i.id DESC
 LIMIT sqlc.narg('max');
 
 -- name: GetIdea :one
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested,
@@ -68,11 +68,11 @@ ORDER BY n.created_at, n.user_id;
 -- Troca os campos do postar. O autor não participa da própria ideia, então interested sai fixo.
 -- ideas.id e não só id: com o id solto, o sqlc 1.29 acusa referência ambígua no UPDATE dentro do WITH.
 WITH i AS (
-    UPDATE ideas SET title = $2, description = $3, course = $4, category = $5, slots = $6
+    UPDATE ideas SET title = $2, description = $3, course = $4, category = $5, slots = $6, skills = $7
     WHERE ideas.id = $1
     RETURNING *
 )
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        false AS interested,
@@ -95,7 +95,7 @@ WHERE id = sqlc.arg('id');
 
 -- name: ListAuthorIdeas :many
 -- Todas as ideias de um autor, em qualquer status: "Minhas ideias" (viewer = autor) e o perfil.
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested,
@@ -109,7 +109,7 @@ ORDER BY i.created_at DESC, i.id DESC;
 
 -- name: ListParticipating :many
 -- As ideias em que um aluno marcou "quero participar", em qualquer status, da marcação mais recente para a mais antiga.
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = sqlc.arg('viewer')) AS interested,
