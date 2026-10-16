@@ -47,11 +47,12 @@ type Session struct {
 }
 
 type User struct {
-	ID        int64
-	DiscordID *string
-	Name      string
-	AvatarUrl *string
-	Course    *string
-	CreatedAt time.Time
-	Skills    []string
+	ID          int64
+	DiscordID   *string
+	Name        string
+	AvatarUrl   *string
+	Course      *string
+	CreatedAt   time.Time
+	Skills      []string
+	IsModerator bool
 }

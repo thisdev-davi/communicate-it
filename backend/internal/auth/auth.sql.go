@@ -35,18 +35,19 @@ func (q *Queries) DeleteSession(ctx context.Context, tokenHash []byte) error {
 }
 
 const getSessionUser = `-- name: GetSessionUser :one
-SELECT u.id, u.name, u.avatar_url, u.course, u.skills
+SELECT u.id, u.name, u.avatar_url, u.course, u.skills, u.is_moderator
 FROM sessions s
 JOIN users u ON u.id = s.user_id
 WHERE s.token_hash = $1 AND s.expires_at > now()
 `
 
 type GetSessionUserRow struct {
-	ID        int64    `json:"id"`
-	Name      string   `json:"name"`
-	AvatarUrl *string  `json:"avatar_url"`
-	Course    *string  `json:"course"`
-	Skills    []string `json:"skills"`
+	ID          int64    `json:"id"`
+	Name        string   `json:"name"`
+	AvatarUrl   *string  `json:"avatar_url"`
+	Course      *string  `json:"course"`
+	Skills      []string `json:"skills"`
+	IsModerator bool     `json:"is_moderator"`
 }
 
 func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (GetSessionUserRow, error) {
@@ -58,6 +59,7 @@ func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (GetSess
 		&i.AvatarUrl,
 		&i.Course,
 		&i.Skills,
+		&i.IsModerator,
 	)
 	return i, err
 }
@@ -84,16 +86,17 @@ func (q *Queries) UpdateMe(ctx context.Context, arg UpdateMeParams) ([]string, e
 }
 
 const upsertDiscordUser = `-- name: UpsertDiscordUser :one
-INSERT INTO users (discord_id, name, avatar_url)
-VALUES ($1, $2, $3)
-ON CONFLICT (discord_id) DO UPDATE SET name = EXCLUDED.name, avatar_url = EXCLUDED.avatar_url
+INSERT INTO users (discord_id, name, avatar_url, is_moderator)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (discord_id) DO UPDATE SET name = EXCLUDED.name, avatar_url = EXCLUDED.avatar_url, is_moderator = EXCLUDED.is_moderator
 RETURNING id, course
 `
 
 type UpsertDiscordUserParams struct {
-	DiscordID *string `json:"discord_id"`
-	Name      string  `json:"name"`
-	AvatarUrl *string `json:"avatar_url"`
+	DiscordID   *string `json:"discord_id"`
+	Name        string  `json:"name"`
+	AvatarUrl   *string `json:"avatar_url"`
+	IsModerator bool    `json:"is_moderator"`
 }
 
 type UpsertDiscordUserRow struct {
@@ -101,9 +104,14 @@ type UpsertDiscordUserRow struct {
 	Course *string `json:"course"`
 }
 
-// Nome e foto acompanham o Discord: são regravados a cada login.
+// Nome, foto e o cargo de moderação acompanham o Discord: são regravados a cada login.
 func (q *Queries) UpsertDiscordUser(ctx context.Context, arg UpsertDiscordUserParams) (UpsertDiscordUserRow, error) {
-	row := q.db.QueryRow(ctx, upsertDiscordUser, arg.DiscordID, arg.Name, arg.AvatarUrl)
+	row := q.db.QueryRow(ctx, upsertDiscordUser,
+		arg.DiscordID,
+		arg.Name,
+		arg.AvatarUrl,
+		arg.IsModerator,
+	)
 	var i UpsertDiscordUserRow
 	err := row.Scan(&i.ID, &i.Course)
 	return i, err
