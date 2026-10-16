@@ -468,8 +468,8 @@ func (req *ideaRequest) validate() map[string]string {
 	req.Category = strings.TrimSpace(req.Category)
 
 	fields := map[string]string{}
-	checkText(fields, "title", req.Title, 3, 120)
-	checkText(fields, "description", req.Description, 1, 5000)
+	CheckText(fields, "title", req.Title, 3, 120)
+	CheckText(fields, "description", req.Description, 1, 5000)
 	CheckOption(fields, "course", req.Course, Courses)
 	CheckOption(fields, "category", req.Category, categories)
 	if req.Slots < 1 || req.Slots > 20 {
@@ -486,7 +486,8 @@ func (req *statusRequest) validate() map[string]string {
 	return fields
 }
 
-func checkText(fields map[string]string, name, v string, minLen, maxLen int) {
+// CheckText grava em fields o erro de um texto obrigatório fora do limite de caracteres; exportada para eventos usar as mesmas mensagens.
+func CheckText(fields map[string]string, name, v string, minLen, maxLen int) {
 	n := utf8.RuneCountInString(v) // caracteres, não bytes: "ação" tem 4
 	switch {
 	case n == 0:
