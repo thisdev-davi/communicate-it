@@ -51,7 +51,7 @@ Tabelas principais do MVP:
 - **ideas:** a ideia postada. id, autor (users), título, descrição, curso, categoria, número de vagas, habilidades procuradas, status (aberta, em andamento, concluída).
 - **interests:** quem clicou em "quero participar". Liga um user a uma idea.
 - **Habilidades:** catálogo fixo no código (front-end, back-end, design, dados…), como curso e categoria. Cada aluno guarda as suas numa coluna `skills` (array), e cada ideia guarda as procuradas do mesmo jeito ([fatia 12](contratos/fatia-12-habilidades-da-ideia.md)). Sem tabela de catálogo nem tabelas de junção: a lista é curta e muda pouco ([fatia 11](contratos/fatia-11-habilidades.md)).
-- **events:** o evento. id, título, data, local. Presença confirmada também vira uma ligação entre user e event.
+- **events:** o evento. id, autor (users), título, descrição, data e hora de início, local. Presença confirmada também vira uma ligação entre user e event ([fase de eventos](#fase-de-eventos)).
 
 ```mermaid
 erDiagram
@@ -105,6 +105,42 @@ Um aluno posta várias ideias; cada ideia reúne vários interessados; perfis e 
 - Aba com a lista de eventos (título, data, local).
 - Qualquer aluno pode criar um evento; eventos são independentes de ideias.
 - Confirmação de presença ("vou").
+- Detalhes e fatias na [fase de eventos](#fase-de-eventos).
+
+## Fase de eventos
+
+Decidida em 16 de outubro de 2026. Quatro fatias, nesta ordem, cada uma com o próprio contrato em `docs/contratos/` e um PR com base na `main`:
+
+| fatia | conteúdo |
+|---|---|
+| 13 — agenda de eventos | tabela `events`, criar evento, `/eventos` com os próximos, `/eventos/novo`, "Eventos" na barra |
+| 14 — página do evento e "vou" | tabela `event_attendees`, `/eventos/<id>`, confirmar e desistir da presença, lista de quem vai, contagem nos cards |
+| 15 — cargo de moderação | `users.is_moderator` lido dos cargos do Discord no login, `is_moderator` no `/api/me`, moderador apaga qualquer ideia |
+| 16 — editar e apagar evento | criador e moderador editam e apagam, `/eventos/<id>/editar` |
+
+**Evento**
+
+- Campos: título, descrição, data e hora de início e local em texto livre ("Bloco B, sala 204", "Call no Discord"). Sem horário de fim, sem tipo, sem ligação com ideia: quem precisa escreve na descrição.
+- Qualquer aluno logado com curso cria, sem aprovação. O evento é criado no futuro.
+- Horário sempre o de Brasília: o front envia com `-03:00` fixo (sem horário de verão desde 2019) e mostra com `America/Sao_Paulo`.
+- A agenda mostra os eventos de hoje em diante, do mais próximo. Os passados somem da lista, mas a página continua no link.
+- O visitante vê a agenda e a página do evento, com o número de confirmados; só o logado confirma presença e cria.
+- O card e a página mostram o organizador (foto e nome, link para o perfil), sem "Chamar no Discord".
+
+**Presença ("vou")**
+
+- Alterna como o "quero participar": confirmar e desistir, sem aprovação e sem limite de vagas.
+- O criador não entra sozinho na lista: confirma como todo mundo.
+- Quem está logado vê a lista de quem vai (foto, nome, link para o perfil, sem `discord_id`); o visitante vê só o número.
+
+**Moderação**
+
+- `users.is_moderator` é um booleano. No login, a API lê os cargos da pessoa no servidor (a mesma chamada que já confere se ela é membro) e liga o booleano se ela tiver um dos cargos de `DISCORD_MOD_ROLE_IDS` (hoje Admin e Moderação, com o mesmo poder).
+- Quem dá e tira o cargo são os admins, no próprio Discord. O cargo só é relido no login: tirar a moderação vale no próximo login, até 30 dias depois. Na urgência, `DELETE FROM sessions WHERE user_id = …` força o novo login.
+- O moderador edita e apaga qualquer evento e apaga qualquer ideia (não edita ideia alheia nem troca o status dela).
+- O front mostra os botões pelo `is_moderator` do `/api/me`; quem decide de verdade é a API.
+
+**Fica para depois:** seção de eventos passados, limite de vagas, eventos no perfil, próximo evento em destaque no mural, segundo nível de cargo (Admin com poder próprio).
 
 ## Regras de negócio e fora de escopo
 
@@ -114,6 +150,7 @@ Um aluno posta várias ideias; cada ideia reúne vários interessados; perfis e 
 - A lista de interessados é aberta, sem aprovação — o espírito é conhecer gente nova.
 - Apenas o autor da ideia muda o status dela e trava novos interessados.
 - A coordenação real dos grupos acontece no Discord, não na plataforma.
+- Moderação: quem tem o cargo Admin ou Moderação no servidor do Discord apaga qualquer ideia e edita ou apaga qualquer evento ([fase de eventos](#fase-de-eventos)).
 
 **Fora de escopo no MVP (vai para fases futuras)**
 
