@@ -47,11 +47,12 @@ func NewHandler(db DBTX, userID func(*http.Request) (int64, error)) *Handler {
 
 // Corpo do POST e do PUT: postar e editar trocam os mesmos campos.
 type ideaRequest struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Course      string `json:"course"`
-	Category    string `json:"category"`
-	Slots       int    `json:"slots"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Course      string   `json:"course"`
+	Category    string   `json:"category"`
+	Slots       int      `json:"slots"`
+	Skills      []string `json:"skills"` // habilidades procuradas; sem o campo, nenhuma
 }
 
 // Corpo do PUT /status.
@@ -76,6 +77,7 @@ type ideaResponse struct {
 	Author      authorResponse `json:"author"`
 	CreatedAt   time.Time      `json:"created_at"`
 	DoneAt      *time.Time     `json:"done_at"` // quando foi concluída; null se não está concluída
+	Skills      []string       `json:"skills"`  // habilidades procuradas, na ordem do catálogo
 	// Quantos marcaram "quero participar" e se quem pede é um deles.
 	InterestCount int64 `json:"interest_count"`
 	Interested    bool  `json:"interested"`
@@ -128,6 +130,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		Course:      req.Course,
 		Category:    req.Category,
 		Slots:       int32(req.Slots), // seguro: validate garante 1–20
+		Skills:      req.Skills,
 	})
 	if err != nil {
 		internalError(w, "create idea", err)
@@ -153,6 +156,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		Course:      req.Course,
 		Category:    req.Category,
 		Slots:       int32(req.Slots), // seguro: validate garante 1–20
+		Skills:      req.Skills,
 	})
 	if errors.Is(err, pgx.ErrNoRows) { // apagada entre o authorOf e aqui
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
@@ -471,6 +475,7 @@ func (req *ideaRequest) validate() map[string]string {
 	if req.Slots < 1 || req.Slots > 20 {
 		fields["slots"] = "deve ser entre 1 e 20"
 	}
+	req.Skills = CleanSkills(fields, "skills", req.Skills) // nunca nil: a coluna é NOT NULL
 	return fields
 }
 
@@ -536,6 +541,7 @@ func toResponse(r ListIdeasRow) ideaResponse {
 		Author:        authorResponse{ID: r.AuthorID, Name: r.AuthorName, AvatarURL: r.AuthorAvatarUrl},
 		CreatedAt:     r.CreatedAt.UTC(),
 		DoneAt:        utc(r.DoneAt),
+		Skills:        r.Skills,
 		InterestCount: r.InterestCount,
 		Interested:    r.Interested,
 		InterestFaces: r.InterestFaces, // []byte vira json.RawMessage direto: os dois são []byte por baixo
