@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/thisdev-davi/comunica-faesa/backend/internal/auth"
+	"github.com/thisdev-davi/comunica-faesa/backend/internal/events"
 	"github.com/thisdev-davi/comunica-faesa/backend/internal/ideas"
 )
 
@@ -13,7 +14,7 @@ import (
 // 401 aqui quer dizer "passou pela proteção e chegou no handler".
 func TestRoutesBlockCrossOriginWrites(t *testing.T) {
 	a := auth.NewHandler(nil, "id", "secret", "http://localhost/callback", "guild")
-	api := routes(a, ideas.NewHandler(nil, a.UserID))
+	api := routes(a, ideas.NewHandler(nil, a.UserID), events.NewHandler(nil, a.UserID))
 	cases := []struct {
 		name          string
 		method, path  string
@@ -24,6 +25,7 @@ func TestRoutesBlockCrossOriginWrites(t *testing.T) {
 		{"post de outro site", http.MethodPost, "/api/ideas", "cross-site", true},
 		{"logout forçado de outro site", http.MethodPost, "/api/auth/logout", "same-site", true},
 		{"apagar ideia de outro site", http.MethodDelete, "/api/ideas/1", "cross-site", true},
+		{"criar evento de outro site", http.MethodPost, "/api/events", "cross-site", true},
 		{"post da própria página", http.MethodPost, "/api/ideas", "same-origin", false},
 		{"post sem navegador (curl)", http.MethodPost, "/api/ideas", "", false},
 		{"get de outro site passa", http.MethodGet, "/api/ideas/1", "cross-site", false},
