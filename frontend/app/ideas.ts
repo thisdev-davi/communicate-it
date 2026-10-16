@@ -15,6 +15,7 @@ export type Idea = {
   author: { id: number; name: string; avatar_url: string | null };
   created_at: string;
   done_at: string | null; // fatia 7 (docs/contratos/fatia-7-status.md): quando foi concluída
+  skills: string[]; // fatia 12: habilidades procuradas, na ordem do catálogo
   interest_count: number; // fatia 5 (docs/contratos/fatia-5-quero-participar.md)
   interested: boolean; // quem pede está na lista
   interest_faces: Face[]; // os 8 primeiros interessados; [] para visitante
