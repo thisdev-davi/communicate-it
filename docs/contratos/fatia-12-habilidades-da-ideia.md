@@ -41,14 +41,14 @@ Erros novos (`400 validation_failed`, campo `skills`): `"valor inválido"` (fora
 ## Front
 
 - Postar e editar ideia: o grupo de caixas do editar perfil vira o componente `SkillsField`, com o rótulo "Habilidades procuradas" e a dica "Opcional. Escolha até 5.", depois de categoria e vagas.
-- Card do mural: uma linha de chips entre a descrição e o rodapé, com até 3 e "+N" para o resto. A linha existe sempre (vazia se a ideia não pede nada), para os cards continuarem com a mesma altura.
+- Card do mural: uma linha de chips entre a descrição e o rodapé, com até 2 e "+N" para o resto (3 não cabem no card mais estreito com os rótulos longos). A linha existe sempre (vazia se a ideia não pede nada), para os cards continuarem com a mesma altura.
 - Página da ideia: todos os chips, com o rótulo "Procura".
-- Destaque: o chip da habilidade que quem vê também tem fica em `primary-soft` com o ícone `check`, e o leitor de tela ouve "(você tem)".
+- Destaque: o chip da habilidade que quem vê também tem fica em `primary-soft` com o ícone `check`, e o leitor de tela ouve "(você tem)". Esses chips vêm primeiro, para não ficarem escondidos no "+N".
 
 ## Pronto quando
 
 - [ ] `goose up` cria `ideas.skills`.
 - [ ] Postar e editar gravam as habilidades; mais de 5 ou valor fora do catálogo responde `400` no campo.
-- [ ] O card mostra até 3 chips e "+N"; cards com e sem habilidades têm a mesma altura.
+- [ ] O card mostra até 2 chips e "+N"; cards com e sem habilidades têm a mesma altura.
 - [ ] Quem tem a habilidade no perfil vê o chip destacado no card e na página.
 - [ ] Testes dos handlers cobrindo `skills` no `POST` e no `PUT` (limpa e ordena), os dois `400` e o campo nas listas.
