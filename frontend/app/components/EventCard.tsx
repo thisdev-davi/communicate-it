@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { CommunityEvent } from "../events";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
@@ -13,18 +14,30 @@ const TIME = fmt({ hour: "2-digit", minute: "2-digit" }); // "19:00"
 const FULL = fmt({ day: "numeric", month: "long" }); // "20 de outubro", para o leitor de tela
 
 // EventCard do design system: bloco de data em `primary` com o losango âmbar, título, hora, local, descrição e organizador.
-// Como o IdeaCard, o card não tem ação; o único destino é o perfil do organizador.
-export function EventCard({ event }: { event: CommunityEvent }) {
+// Na agenda, como o IdeaCard, o card não tem ação e tem dois destinos: o título (link esticado) leva à página do evento
+// e o organizador ao perfil dele. Quem confirmou vê a borda de destaque e o selo "Você vai".
+// `full` é a própria página do evento: título vira h1, nada é cortado e não há link; `action` (o botão de presença)
+// ocupa a direita do rodapé.
+export function EventCard({ event, full = false, action }: { event: CommunityEvent; full?: boolean; action?: ReactNode }) {
   const start = new Date(event.starts_at);
+  const Title = full ? "h1" : "h3";
   return (
-    <article className={`card ${styles.card}`}>
+    <article className={["card", styles.card, full && styles.full, event.going && styles.going].filter(Boolean).join(" ")}>
       {/* O leitor de tela ouve a data por extenso na linha da hora; o bloco é só visual. */}
       <div className={styles.date} aria-hidden="true">
         <span className={styles.day}>{DAY.format(start)}</span>
         <span className={styles.month}>{MONTH.format(start).replace(".", "")}</span>
       </div>
       <div className={styles.body}>
-        <h3 className={styles.title}>{event.title}</h3>
+        <Title className={styles.title}>
+          {full ? (
+            event.title
+          ) : (
+            <Link href={`/eventos/${event.id}`} className={styles.link}>
+              {event.title}
+            </Link>
+          )}
+        </Title>
         <ul className={styles.facts}>
           <li>
             <Icon name="clock" size={14} />
@@ -38,6 +51,10 @@ export function EventCard({ event }: { event: CommunityEvent }) {
             <span className="sr-only">Local: </span>
             {event.location}
           </li>
+          <li>
+            <Icon name="users" size={14} />
+            {event.attendee_count} {event.attendee_count === 1 ? "confirmado" : "confirmados"}
+          </li>
         </ul>
         <p className={styles.desc}>{event.description}</p>
         <footer className={styles.foot}>
@@ -49,6 +66,13 @@ export function EventCard({ event }: { event: CommunityEvent }) {
               {event.author.name}
             </span>
           </Link>
+          {action ??
+            (event.going && (
+              <span className={styles.badge}>
+                <Icon name="circle-check" size={14} />
+                Você vai
+              </span>
+            ))}
         </footer>
       </div>
     </article>

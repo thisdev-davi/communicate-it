@@ -1,5 +1,6 @@
 /* Regras do .cf-event do bundle.css do design system, com o texto e o rodapé do IdeaCard. */
 .card {
+  position: relative; /* âncora do link esticado do título */
   display: flex;
   gap: var(--space-4);
   align-items: flex-start;
@@ -63,11 +64,84 @@
   line-height: 24px;
   font-weight: 700;
   color: var(--ink);
+}
+
+/* Na agenda, título em até 2 linhas e descrição em até 3; a página do evento (.full) mostra tudo. */
+.card:not(.full) .title,
+.card:not(.full) .desc {
   display: -webkit-box;
   -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card:not(.full) .title {
   -webkit-line-clamp: 2;
   line-clamp: 2;
-  overflow: hidden;
+}
+
+.card:not(.full) .desc {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.full .title {
+  font-size: 24px;
+  line-height: 32px;
+}
+
+.full .desc {
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--ink);
+}
+
+/* O card todo é clicável sem aninhar elementos interativos: o ::after do link do título cobre o card,
+   e o organizador (.profile) fica por cima, como no IdeaCard. */
+.link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-md);
+}
+
+.card:not(.going):has(.link:hover) {
+  border-color: var(--line-strong);
+}
+
+.link:focus-visible {
+  outline: none;
+}
+
+.link:focus-visible::after {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Quem confirmou vê a borda do destaque e o selo "Você vai". */
+.going {
+  border-color: var(--accent);
+}
+
+.badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  margin-left: auto;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .facts {
@@ -102,16 +176,14 @@
   font-size: 13px;
   line-height: 20px;
   color: var(--ink-muted);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
 }
 
+/* Organizador à esquerda; à direita, o selo (agenda) ou o botão (página), que desce se não couber. */
 .foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-2);
   min-width: 0;
   padding-top: var(--space-3);
@@ -122,6 +194,8 @@
 }
 
 .profile {
+  position: relative;
+  z-index: 1; /* acima do ::after esticado do título, para receber o clique */
   display: flex;
   align-items: center;
   gap: var(--space-2);
