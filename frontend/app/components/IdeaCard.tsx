@@ -75,16 +75,18 @@ export function IdeaCard({ idea, full = false, action, have }: { idea: Idea; ful
       </Title>
       <p className={styles.desc}>{idea.description}</p>
       {/* No mural a linha existe sempre, mesmo vazia, para os cards terem a mesma altura; na página, só se houver. */}
-      {full ? (
-        idea.skills.length > 0 && (
-          <div className={styles.wanted}>
-            <span className={styles.wantedLabel}>Procura</span>
-            <SkillChips skills={idea.skills} label="Habilidades procuradas" have={have} />
-          </div>
-        )
-      ) : (
+      {(!full || idea.skills.length > 0) && (
         <div className={styles.wanted}>
-          {idea.skills.length > 0 && <SkillChips skills={idea.skills} label="Habilidades procuradas" have={have} max={2} className={styles.oneLine} />}
+          {full && <span className={styles.wantedLabel}>Procura</span>}
+          {idea.skills.length > 0 && (
+            <SkillChips
+              skills={idea.skills}
+              label="Habilidades procuradas"
+              have={have}
+              max={full ? undefined : 2}
+              className={full ? undefined : styles.oneLine}
+            />
+          )}
         </div>
       )}
       <footer className={styles.foot}>

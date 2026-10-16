@@ -49,8 +49,6 @@ export function ProfileForm({ me }: { me: Me }) {
     setSending(false);
   }
 
-  // O que fazer em cada campo que a API marcar no 400, no lugar do texto técnico dela.
-  const skillsError = fields.skills && "Escolha até 5 habilidades da lista.";
   return (
     <section className={`card ${form.card}`} aria-labelledby="editar-perfil">
       <h1 id="editar-perfil" className={form.title}>
@@ -68,7 +66,7 @@ export function ProfileForm({ me }: { me: Me }) {
             defaultValue={me.course ?? ""}
             error={fields.course && "Escolha o curso."}
           />
-          <SkillsField label="Habilidades" hint="Escolha até 5." defaultValue={me.skills} error={skillsError} />
+          <SkillsField label="Habilidades" hint="Escolha até 5." defaultValue={me.skills} error={fields.skills && "Escolha até 5 habilidades da lista."} />
           <div className={form.actions}>
             <Button type="submit">{sending ? "Salvando…" : "Salvar alterações"}</Button>
           </div>
