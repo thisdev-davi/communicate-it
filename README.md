@@ -63,6 +63,16 @@ O login usa OAuth do Discord e só deixa entrar quem está no servidor da comuni
 1. No [Discord Developer Portal](https://discord.com/developers/applications), crie uma aplicação. Em **OAuth2**, adicione o redirect `http://localhost:3000/api/auth/discord/callback` e copie o **Client ID** e o **Client Secret** para `DISCORD_CLIENT_ID` e `DISCORD_CLIENT_SECRET` no `.env`.
 2. No Discord, ative o **Modo desenvolvedor** (Configurações → Avançado), clique com o botão direito no servidor da comunidade → **Copiar ID** e cole em `DISCORD_GUILD_ID`.
 3. Crie um convite sem expiração do servidor e cole em `DISCORD_INVITE_URL`.
+4. Opcional, para a moderação: em **Configurações do servidor → Cargos**, clique com o botão direito nos cargos Admin e Moderação → **Copiar ID** e cole os dois em `DISCORD_MOD_ROLE_IDS`, separados por vírgula. Quem tem um desses cargos vira moderador no próximo login (ver abaixo).
+
+#### Cargo de moderação
+
+O cargo mora no Discord: quem dá e tira são os admins do servidor. A API relê os cargos a cada login e grava `users.is_moderator`. Tirar o cargo só vale no próximo login da pessoa, até 30 dias depois (a duração da sessão). Na urgência, apague as sessões dela, o que força um novo login:
+
+```sh
+# local; na VPS, o mesmo DELETE dentro do container do banco (docker compose -f compose.prod.yaml exec db psql -U comunica -d comunica)
+docker compose exec db psql -U comunica -d comunica -c "DELETE FROM sessions WHERE user_id = <id do usuário>;"
+```
 
 O secret nunca vai para o repositório: ele vive só no `.env`.
 
@@ -102,6 +112,7 @@ Primeira vez:
    DISCORD_REDIRECT_URL=https://comunica.5-183-8-106.sslip.io/api/auth/discord/callback
    DISCORD_GUILD_ID=
    DISCORD_INVITE_URL=
+   DISCORD_MOD_ROLE_IDS=
    EOF
    chown root:deploy .env && chmod 640 .env && nano .env      # preencha as DISCORD_*
    docker compose -f compose.prod.yaml up -d --build
