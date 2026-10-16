@@ -45,6 +45,8 @@ services:
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       DISCORD_REDIRECT_URL: ${DISCORD_REDIRECT_URL}
       DISCORD_GUILD_ID: ${DISCORD_GUILD_ID}
+      # opcional: ids dos cargos de moderação, separados por vírgula; vazio = ninguém é moderador
+      DISCORD_MOD_ROLE_IDS: ${DISCORD_MOD_ROLE_IDS:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

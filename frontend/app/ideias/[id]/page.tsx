@@ -9,7 +9,7 @@ import { SkillChips } from "../../components/SkillChips";
 import { StatePanel } from "../../components/StatePanel";
 import { type Idea, type Interest } from "../../ideas";
 import { getMe } from "../../me";
-import { AuthorPanel } from "./author-panel";
+import { AuthorPanel, ModeratorPanel } from "./author-panel";
 import { getIdea } from "./get-idea";
 import styles from "./ideia.module.css";
 
@@ -51,6 +51,7 @@ async function IdeaDetail({ params }: { params: PageProps<"/ideias/[id]">["param
       {idea.interested && <p className={styles.hint}>Você está na lista. O autor vai te chamar no Discord.</p>}
       {!mine && !open && !idea.interested && <p className={styles.hint}>Esta ideia não está recebendo novos interessados.</p>}
       {mine && <AuthorPanel ideaId={idea.id} status={idea.status} />}
+      {!mine && me.is_moderator && <ModeratorPanel ideaId={idea.id} />}
       {idea.interests && <Interested people={idea.interests} ideaTitle={idea.title} />}
     </>
   );

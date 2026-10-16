@@ -810,6 +810,39 @@ func testDB(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
+// O moderador apaga ideia alheia, mas não edita nem troca o status (docs/contratos/fatia-15-cargo-de-moderacao.md).
+func TestModeratorDeletes(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+	var authorID, modID int64
+	err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID)
+	if err == nil {
+		err = pool.QueryRow(ctx, `INSERT INTO users (name, is_moderator) VALUES ('Moderador de Teste', true) RETURNING id`).Scan(&modID)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	author, mod := NewHandler(pool, loggedAs(authorID)), NewHandler(pool, loggedAs(modID))
+	rec := do(t, author.Create, http.MethodPost, validBody)
+	if rec.Code != 201 {
+		t.Fatalf("POST: %d (%s)", rec.Code, rec.Body)
+	}
+	id := strconv.FormatInt(decode[ideaResponse](t, rec).ID, 10)
+
+	if rec = doIDBody(t, mod.Update, http.MethodPut, id, validBody); rec.Code != 403 {
+		t.Errorf("moderador edita: %d (%s), quer 403", rec.Code, rec.Body)
+	}
+	if rec = doIDBody(t, mod.SetStatus, http.MethodPut, id, `{"status":"done"}`); rec.Code != 403 {
+		t.Errorf("moderador troca o status: %d (%s), quer 403", rec.Code, rec.Body)
+	}
+	if rec = doID(t, mod.Delete, http.MethodDelete, id); rec.Code != 204 {
+		t.Fatalf("moderador apaga: %d (%s), quer 204", rec.Code, rec.Body)
+	}
+	if rec = doID(t, author.Get, http.MethodGet, id); rec.Code != 404 {
+		t.Errorf("GET depois do DELETE do moderador: %d, quer 404", rec.Code)
+	}
+}
+
 // lockDB segura um advisory lock do Postgres até o fim do teste. O go test roda os pacotes em paralelo e
 // os testes de banco de pacotes diferentes limpam as mesmas tabelas; o lock faz um esperar o outro.
 func lockDB(t *testing.T, pool *pgxpool.Pool) {

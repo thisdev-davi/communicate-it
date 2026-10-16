@@ -5,6 +5,8 @@ Objetivo único: o aluno entra com o Discord, ganha uma sessão, e o `POST /api/
 Mudou o contrato? Atualiza este arquivo **antes** do código.
 
 > **Atualizado pela [fatia 11](fatia-11-habilidades.md):** o `GET /api/me` ganha `skills`.
+>
+> **Atualizado pela [fatia 15](fatia-15-cargo-de-moderacao.md):** o login lê os cargos do membro no servidor e grava `users.is_moderator`; o `GET /api/me` ganha `is_moderator`.
 
 ## Fora desta fatia (de propósito)
 

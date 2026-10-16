@@ -48,6 +48,10 @@ WHERE i.id = sqlc.arg('id');
 -- O status vem junto: o "quero participar" só entra em ideia aberta.
 SELECT author_id, status FROM ideas WHERE id = $1;
 
+-- name: IsModerator :one
+-- O moderador apaga qualquer ideia (docs/contratos/fatia-15-cargo-de-moderacao.md).
+SELECT is_moderator FROM users WHERE id = $1;
+
 -- name: AddInterest :exec
 -- Repetir não dá erro nem duplica: a chave (idea_id, user_id) já existe e o insert vira nada.
 INSERT INTO interests (idea_id, user_id) VALUES ($1, $2)

@@ -141,7 +141,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 // Update troca os campos da ideia (os mesmos do postar). Só o autor; status, autor e data não mudam por aqui.
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
-	id, ok := h.authorOf(w, r)
+	id, ok := h.authorOf(w, r, false)
 	if !ok {
 		return
 	}
@@ -169,9 +169,9 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toResponse(ListIdeasRow(row)))
 }
 
-// Delete apaga a ideia de vez, e os interessados vão junto (ON DELETE CASCADE). Só o autor.
+// Delete apaga a ideia de vez, e os interessados vão junto (ON DELETE CASCADE). O autor ou um moderador.
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
-	id, ok := h.authorOf(w, r)
+	id, ok := h.authorOf(w, r, true)
 	if !ok {
 		return
 	}
@@ -185,7 +185,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 // SetStatus troca o status da ideia. Só o autor. Só ideia aberta recebe interessados (PutInterest),
 // então trocar o status é também o jeito de travar ou destravar a lista.
 func (h *Handler) SetStatus(w http.ResponseWriter, r *http.Request) {
-	id, ok := h.authorOf(w, r)
+	id, ok := h.authorOf(w, r, false)
 	if !ok {
 		return
 	}
@@ -402,9 +402,9 @@ func (h *Handler) loggedIn(w http.ResponseWriter, r *http.Request) (userID int64
 	return userID, true
 }
 
-// authorOf devolve o id da ideia da rota quando quem chama é o autor dela. Senão já responde
-// 401 (sem sessão), 404 (ideia não existe) ou 403 (não é o autor) e devolve ok = false.
-func (h *Handler) authorOf(w http.ResponseWriter, r *http.Request) (id int64, ok bool) {
+// authorOf devolve o id da ideia da rota quando quem chama é o autor dela (ou um moderador, com orModerator).
+// Senão já responde 401 (sem sessão), 404 (ideia não existe) ou 403 (não é o autor) e devolve ok = false.
+func (h *Handler) authorOf(w http.ResponseWriter, r *http.Request, orModerator bool) (id int64, ok bool) {
 	userID, ok := h.loggedIn(w, r)
 	if !ok {
 		return 0, false
@@ -423,11 +423,22 @@ func (h *Handler) authorOf(w http.ResponseWriter, r *http.Request) (id int64, ok
 		internalError(w, "get idea author", err)
 		return 0, false
 	}
-	if idea.AuthorID != userID {
-		writeJSON(w, http.StatusForbidden, errorResponse{Error: "not_author"})
-		return 0, false
+	if idea.AuthorID == userID {
+		return id, true
 	}
-	return id, true
+	// O banco só é consultado de novo quando a regra aceita moderador e quem chama não é o autor.
+	if orModerator {
+		mod, err := h.q.IsModerator(r.Context(), userID)
+		if err != nil {
+			internalError(w, "is moderator", err)
+			return 0, false
+		}
+		if mod {
+			return id, true
+		}
+	}
+	writeJSON(w, http.StatusForbidden, errorResponse{Error: "not_author"})
+	return 0, false
 }
 
 // pathID lê o {id} da rota. Id que não é inteiro positivo é só uma ideia que não existe: quem chama responde 404 sem ir ao banco.

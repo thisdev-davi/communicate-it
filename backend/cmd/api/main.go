@@ -43,6 +43,8 @@ func run() error {
 		return fmt.Errorf("variáveis não definidas: %s", strings.Join(missing, ", "))
 	}
 	port := cmp.Or(os.Getenv("PORT"), "8090")
+	// Opcional: sem a variável, ninguém é moderador. Fields também descarta espaços e vírgulas sobrando ("1, 2,").
+	modRoles := strings.Fields(strings.ReplaceAll(os.Getenv("DISCORD_MOD_ROLE_IDS"), ",", " "))
 
 	// ctx é cancelado no Ctrl+C ou no SIGTERM do docker stop
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -56,13 +58,13 @@ func run() error {
 		return fmt.Errorf("conectar no banco: %w", err)
 	}
 
-	a := auth.NewHandler(pool, clientID, clientSecret, redirectURL, guildID)
+	a := auth.NewHandler(pool, clientID, clientSecret, redirectURL, guildID, modRoles)
 	srv := &http.Server{
 		Addr:              ":" + port,
 		Handler:           routes(a, ideas.NewHandler(pool, a.UserID), events.NewHandler(pool, a.UserID)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	slog.Info("api no ar", "addr", srv.Addr)
+	slog.Info("api no ar", "addr", srv.Addr, "cargos_de_moderacao", len(modRoles))
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
 	select {
