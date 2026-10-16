@@ -115,7 +115,7 @@ Decidida em 16 de outubro de 2026. Quatro fatias, nesta ordem, cada uma com o pr
 |---|---|---|
 | 13 — agenda de eventos | tabela `events`, criar evento, `/eventos` com os próximos, `/eventos/novo`, "Eventos" na barra | feita ([contrato](contratos/fatia-13-agenda-de-eventos.md), PR #30) |
 | 14 — página do evento e "vou" | tabela `event_attendees`, `/eventos/<id>`, confirmar e desistir da presença, lista de quem vai, contagem nos cards | feita ([contrato](contratos/fatia-14-presenca-em-eventos.md), PR #31) |
-| 15 — cargo de moderação | `users.is_moderator` lido dos cargos do Discord no login, `is_moderator` no `/api/me`, moderador apaga qualquer ideia | feita ([contrato](contratos/fatia-15-cargo-de-moderacao.md)) |
+| 15 — cargo de moderação | `users.is_moderator` lido dos cargos do Discord no login, `is_moderator` no `/api/me`, moderador apaga qualquer ideia | feita ([contrato](contratos/fatia-15-cargo-de-moderacao.md), PR #32) |
 | 16 — editar e apagar evento | criador e moderador editam e apagam, `/eventos/<id>/editar` | **próxima**: falta o contrato e o código |
 
 **Onde estamos e o que falta**
