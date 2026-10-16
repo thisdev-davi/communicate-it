@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "./components/Button";
 import { Notice } from "./components/Notice";
 import { Select } from "./components/Select";
+import { SkillsField } from "./components/SkillsField";
 import { TextField } from "./components/TextField";
 import { CATEGORIES, COURSES, type ApiError, type Idea } from "./ideas";
 import styles from "./idea-form.module.css";
@@ -16,6 +17,7 @@ const FIX: Record<string, string> = {
   course: "Escolha o curso.",
   category: "Escolha a categoria.",
   slots: "Escolha um número de 1 a 20.",
+  skills: "Escolha até 5 habilidades da lista.",
 };
 
 // Respostas da API sem campos (403, 404) traduzidas para o que aconteceu.
@@ -51,7 +53,8 @@ export function IdeaForm({ idea }: { idea?: Idea }) {
       const res = await fetch(idea ? `/api/ideas/${idea.id}` : "/api/ideas", {
         method: idea ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...Object.fromEntries(data), slots: Number(data.get("slots")) }),
+        // getAll: o fromEntries guardaria só a última caixa marcada.
+        body: JSON.stringify({ ...Object.fromEntries(data), slots: Number(data.get("slots")), skills: data.getAll("skills") }),
       });
       if (res.ok) {
         const saved: Idea = await res.json();
@@ -117,6 +120,7 @@ export function IdeaForm({ idea }: { idea?: Idea }) {
             defaultValue={idea?.slots}
             error={error("slots")}
           />
+          <SkillsField label="Habilidades procuradas" hint="Opcional. Escolha até 5." defaultValue={idea?.skills ?? []} error={error("skills")} />
           <div className={styles.actions}>
             {idea ? (
               <Button type="submit">{sending ? "Salvando…" : "Salvar alterações"}</Button>

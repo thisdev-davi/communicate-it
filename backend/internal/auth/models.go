@@ -19,6 +19,7 @@ type Idea struct {
 	Status      string     `json:"status"`
 	CreatedAt   time.Time  `json:"created_at"`
 	DoneAt      *time.Time `json:"done_at"`
+	Skills      []string   `json:"skills"`
 }
 
 type Interest struct {

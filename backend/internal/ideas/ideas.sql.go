@@ -29,11 +29,11 @@ func (q *Queries) AddInterest(ctx context.Context, arg AddInterestParams) error 
 const createIdea = `-- name: CreateIdea :one
 
 WITH i AS (
-    INSERT INTO ideas (author_id, title, description, course, category, slots)
-    VALUES ($1, $2, $3, $4, $5, $6)
-    RETURNING id, author_id, title, description, course, category, slots, status, created_at, done_at
+    INSERT INTO ideas (author_id, title, description, course, category, slots, skills)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    RETURNING id, author_id, title, description, course, category, slots, status, created_at, done_at, skills
 )
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        0::bigint AS interest_count, false AS interested, '[]'::json AS interest_faces
 FROM i
@@ -47,6 +47,7 @@ type CreateIdeaParams struct {
 	Course      string
 	Category    string
 	Slots       int32
+	Skills      []string
 }
 
 type CreateIdeaRow struct {
@@ -59,6 +60,7 @@ type CreateIdeaRow struct {
 	Status          string
 	CreatedAt       time.Time
 	DoneAt          *time.Time
+	Skills          []string
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -79,6 +81,7 @@ func (q *Queries) CreateIdea(ctx context.Context, arg CreateIdeaParams) (CreateI
 		arg.Course,
 		arg.Category,
 		arg.Slots,
+		arg.Skills,
 	)
 	var i CreateIdeaRow
 	err := row.Scan(
@@ -91,6 +94,7 @@ func (q *Queries) CreateIdea(ctx context.Context, arg CreateIdeaParams) (CreateI
 		&i.Status,
 		&i.CreatedAt,
 		&i.DoneAt,
+		&i.Skills,
 		&i.AuthorID,
 		&i.AuthorName,
 		&i.AuthorAvatarUrl,
@@ -112,7 +116,7 @@ func (q *Queries) DeleteIdea(ctx context.Context, id int64) error {
 }
 
 const getIdea = `-- name: GetIdea :one
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested,
@@ -139,6 +143,7 @@ type GetIdeaRow struct {
 	Status          string
 	CreatedAt       time.Time
 	DoneAt          *time.Time
+	Skills          []string
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -160,6 +165,7 @@ func (q *Queries) GetIdea(ctx context.Context, arg GetIdeaParams) (GetIdeaRow, e
 		&i.Status,
 		&i.CreatedAt,
 		&i.DoneAt,
+		&i.Skills,
 		&i.AuthorID,
 		&i.AuthorName,
 		&i.AuthorAvatarUrl,
@@ -215,7 +221,7 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (GetUserRow, error) {
 }
 
 const listAuthorIdeas = `-- name: ListAuthorIdeas :many
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested,
@@ -243,6 +249,7 @@ type ListAuthorIdeasRow struct {
 	Status          string
 	CreatedAt       time.Time
 	DoneAt          *time.Time
+	Skills          []string
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -271,6 +278,7 @@ func (q *Queries) ListAuthorIdeas(ctx context.Context, arg ListAuthorIdeasParams
 			&i.Status,
 			&i.CreatedAt,
 			&i.DoneAt,
+			&i.Skills,
 			&i.AuthorID,
 			&i.AuthorName,
 			&i.AuthorAvatarUrl,
@@ -289,7 +297,7 @@ func (q *Queries) ListAuthorIdeas(ctx context.Context, arg ListAuthorIdeasParams
 }
 
 const listIdeas = `-- name: ListIdeas :many
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested,
@@ -319,6 +327,7 @@ type ListIdeasRow struct {
 	Status          string
 	CreatedAt       time.Time
 	DoneAt          *time.Time
+	Skills          []string
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -349,6 +358,7 @@ func (q *Queries) ListIdeas(ctx context.Context, arg ListIdeasParams) ([]ListIde
 			&i.Status,
 			&i.CreatedAt,
 			&i.DoneAt,
+			&i.Skills,
 			&i.AuthorID,
 			&i.AuthorName,
 			&i.AuthorAvatarUrl,
@@ -410,7 +420,7 @@ func (q *Queries) ListInterests(ctx context.Context, ideaID int64) ([]ListIntere
 }
 
 const listParticipating = `-- name: ListParticipating :many
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        EXISTS (SELECT 1 FROM interests n WHERE n.idea_id = i.id AND n.user_id = $1) AS interested,
@@ -439,6 +449,7 @@ type ListParticipatingRow struct {
 	Status          string
 	CreatedAt       time.Time
 	DoneAt          *time.Time
+	Skills          []string
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -467,6 +478,7 @@ func (q *Queries) ListParticipating(ctx context.Context, arg ListParticipatingPa
 			&i.Status,
 			&i.CreatedAt,
 			&i.DoneAt,
+			&i.Skills,
 			&i.AuthorID,
 			&i.AuthorName,
 			&i.AuthorAvatarUrl,
@@ -518,11 +530,11 @@ func (q *Queries) SetIdeaStatus(ctx context.Context, arg SetIdeaStatusParams) er
 
 const updateIdea = `-- name: UpdateIdea :one
 WITH i AS (
-    UPDATE ideas SET title = $2, description = $3, course = $4, category = $5, slots = $6
+    UPDATE ideas SET title = $2, description = $3, course = $4, category = $5, slots = $6, skills = $7
     WHERE ideas.id = $1
-    RETURNING id, author_id, title, description, course, category, slots, status, created_at, done_at
+    RETURNING id, author_id, title, description, course, category, slots, status, created_at, done_at, skills
 )
-SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at,
+SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
        (SELECT count(*) FROM interests n WHERE n.idea_id = i.id) AS interest_count,
        false AS interested,
@@ -540,6 +552,7 @@ type UpdateIdeaParams struct {
 	Course      string
 	Category    string
 	Slots       int32
+	Skills      []string
 }
 
 type UpdateIdeaRow struct {
@@ -552,6 +565,7 @@ type UpdateIdeaRow struct {
 	Status          string
 	CreatedAt       time.Time
 	DoneAt          *time.Time
+	Skills          []string
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
@@ -570,6 +584,7 @@ func (q *Queries) UpdateIdea(ctx context.Context, arg UpdateIdeaParams) (UpdateI
 		arg.Course,
 		arg.Category,
 		arg.Slots,
+		arg.Skills,
 	)
 	var i UpdateIdeaRow
 	err := row.Scan(
@@ -582,6 +597,7 @@ func (q *Queries) UpdateIdea(ctx context.Context, arg UpdateIdeaParams) (UpdateI
 		&i.Status,
 		&i.CreatedAt,
 		&i.DoneAt,
+		&i.Skills,
 		&i.AuthorID,
 		&i.AuthorName,
 		&i.AuthorAvatarUrl,

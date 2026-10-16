@@ -19,6 +19,8 @@ Login com Discord ([fatia 2](fatia-2-login.md)), habilidades, filtros, busca, pa
 > **Atualizado pela [fatia 8](fatia-8-vitrine.md):** o mural mostra só as ideias abertas e em andamento; `GET /api/ideas?status=done` devolve a vitrine de concluídas.
 >
 > **Atualizado nos ajustes de UI:** o formulário de postar saiu do mural para a página `/ideias/nova` (só logado com curso), aberta pelo botão "Postar ideia" no topo do mural. Depois de postar, o aluno vai para a página da ideia nova (`/ideias/<id>`).
+>
+> **Atualizado pela [fatia 12](fatia-12-habilidades-da-ideia.md):** o `POST` aceita `skills`, e toda ideia nas respostas ganha `skills`.
 
 ## Banco
 

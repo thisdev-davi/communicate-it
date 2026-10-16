@@ -10,6 +10,7 @@
 .chip {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   height: 24px;
   padding: 0 var(--space-2);
   border-radius: var(--radius-sm);
@@ -19,4 +20,10 @@
   line-height: 16px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* A habilidade que quem vê também tem: o par primary/primary-soft (o mesmo da página atual na barra), com o check. */
+.have {
+  background: var(--primary-soft);
+  color: var(--primary);
 }

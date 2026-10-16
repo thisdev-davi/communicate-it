@@ -81,6 +81,7 @@ async function ProfileDetail({ params }: { params: PageProps<"/alunos/[id]">["pa
       <Section
         title="Ideias postadas"
         items={p.ideas}
+        have={me.skills}
         empty={
           mine ? (
             <>
@@ -94,6 +95,7 @@ async function ProfileDetail({ params }: { params: PageProps<"/alunos/[id]">["pa
       <Section
         title="Participa de"
         items={p.participating}
+        have={me.skills}
         empty={
           mine ? (
             <>
@@ -109,7 +111,8 @@ async function ProfileDetail({ params }: { params: PageProps<"/alunos/[id]">["pa
 }
 
 // Uma lista do perfil na grade do mural; vazia, só uma frase (o título da seção já diz o que falta).
-function Section({ title, items, empty }: { title: string; items: Idea[]; empty: ReactNode }) {
+// `have` são as habilidades de quem vê, para o destaque nos cards.
+function Section({ title, items, empty, have }: { title: string; items: Idea[]; empty: ReactNode; have: string[] }) {
   return (
     <section className={styles.section}>
       <h2 className={styles.title}>
@@ -121,7 +124,7 @@ function Section({ title, items, empty }: { title: string; items: Idea[]; empty:
         <ul className={mural.grid}>
           {items.map((idea) => (
             <li key={idea.id}>
-              <IdeaCard idea={idea} />
+              <IdeaCard idea={idea} have={have} />
             </li>
           ))}
         </ul>

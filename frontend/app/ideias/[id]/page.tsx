@@ -40,6 +40,7 @@ async function IdeaDetail({ params }: { params: PageProps<"/ideias/[id]">["param
       <IdeaCard
         idea={idea}
         full
+        have={me.skills}
         // Visitante nem chega aqui; o autor não participa da própria ideia, e só ideia aberta recebe interessados
         // (a API também recusa as duas, 409).
         action={!mine && open && <InterestButton ideaId={idea.id} interested={idea.interested} />}

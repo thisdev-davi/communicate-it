@@ -19,6 +19,7 @@ type Idea struct {
 	Status      string
 	CreatedAt   time.Time
 	DoneAt      *time.Time
+	Skills      []string
 }
 
 type Interest struct {

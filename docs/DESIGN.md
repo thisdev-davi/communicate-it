@@ -21,6 +21,8 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - **`faesa-orange` e `faesa-amber`:** cores puras da instituição, só para grafismo (o losango, o logo). Não servem para texto nem para fundo de botão: com texto branco ficam abaixo de 4.5:1.
 - **Status da ideia:** `status-open`, `status-progress` e `status-done`, cada um sobre o seu `-soft`, sempre com a palavra junto. A cor nunca carrega a informação sozinha.
 - **Habilidades (`SkillChips`):** chip neutro, `ink` sobre `surface-sunken`, `radius-sm`, 12px / 600, na ordem do catálogo. Sem cor própria: o laranja e as cores de status já têm dono.
+  - A habilidade procurada que quem vê também tem fica em `primary` sobre `primary-soft`, com o ícone `check` e "(você tem)" para o leitor de tela, e vem antes das outras.
+  - Lista cortada termina num chip "+N" (o leitor de tela ouve "e mais N").
 - **Erro:** `danger` sobre `danger-soft`. O mesmo par pinta o botão `danger`, só para ação que destrói ("Apagar ideia").
 - **Bordas:** `line` em divisórias e cards; `line-strong` em controles (campo, botão secundário) e no hover de card clicável.
 
@@ -101,6 +103,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   - título em até 2 linhas;
   - descrição em 3 linhas;
   - o que passar corta com "…", e o texto curto deixa o espaço reservado (`min-height`);
+  - uma linha de habilidades procuradas (até 2 chips e "+N"), reservada mesmo quando a ideia não pede nada;
   - o rodapé fica sempre embaixo (`margin-top: auto`), e a grade estica os cards.
 - A etiqueta usa a sigla do curso (`COURSE_SHORT`: CC, ENG, ADS). A página da ideia mostra o nome inteiro.
 - Rodapé: foto e nome do autor (cortado com "…"), que levam ao perfil dele; à direita os rostos dos interessados e, embaixo, a linha de ícones (vagas, interessados, data). Na ideia concluída, a data é a da conclusão, escrita por extenso ("concluída em DD/MM", com `circle-check`) para não ser confundida com a postagem.
@@ -118,7 +121,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - **Concluídos (`/concluidas`):** a vitrine, com a mesma grade do mural e as concluídas mais recentes primeiro. O visitante vê a prévia de 3 e o convite para entrar. É onde o build in public vai entrar.
 - **Minhas ideias (`/minhas-ideias`):** só para quem está logado. Todas as ideias do aluno, em qualquer status, na mesma grade do mural, com "Postar ideia" no topo. Os controles ficam na página de cada ideia.
 - **Página da ideia (`/ideias/<id>`):**
-  - o card inteiro (`full`), sem cortes;
+  - o card inteiro (`full`), sem cortes, com as habilidades procuradas depois do rótulo "Procura" (a linha some se a ideia não pede nada);
   - quem não é autor vê o "Quero participar" (pílula `accent` com a mão levantada), que vira "Interessado" (pílula `joined`: `accent-soft` com borda `accent`, ícone `check`, `aria-pressed`), só enquanto a ideia está Aberta. O check entra com um pulo curto só no clique, não a cada visita, e sem animação com `prefers-reduced-motion`;
   - o interessado lê "Você está na lista. O autor vai te chamar no Discord.";
   - na ideia Em andamento ou Concluída, o botão some para todos, e quem não está na lista lê "Esta ideia não está recebendo novos interessados.";
@@ -134,7 +137,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   - as seções "Ideias postadas (N)" e "Participa de (N)", empilhadas, na grade do mural;
   - vazio é uma frase sob o título da seção ("Ainda não postou ideias."). No próprio perfil, fala com "você" e traz o link para agir ("Postar ideia", "Ver o mural");
   - perfil inexistente mostra "Aluno não encontrado".
-- **Postar (`/ideias/nova`):** só para quem está logado e tem curso. Depois do envio, vai para a página da ideia nova.
+- **Postar (`/ideias/nova`):** só para quem está logado e tem curso. Depois de vagas, as "Habilidades procuradas" (opcional, até 5). Depois do envio, vai para a página da ideia nova.
 - **Editar perfil (`/perfil/editar`):** a coluna dos formulários, "Voltar ao perfil", o curso (select) e as habilidades (caixas de seleção em duas colunas, uma no celular). "Salvar alterações" volta ao perfil. Nome e foto não se editam: vêm do Discord.
 - **Editar (`/ideias/<id>/editar`):** o mesmo formulário do postar, já preenchido, com "Editar ideia" e "Salvar alterações". Só o autor; quem não é o autor vai para a página da ideia. Depois de salvar, volta para a ideia.
 - **A conversa acontece no Discord.** A interface aponta para lá (perfil, convite do servidor) e não constrói chat.
@@ -155,7 +158,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - O erro fica no campo: borda `danger`, `aria-invalid` e a dica trocada pela mensagem (ligada por `aria-describedby`).
 - No envio com erro, o foco vai para o primeiro campo inválido.
 - Durante o envio, o `<fieldset disabled>` trava tudo.
-- Grupo de escolhas múltiplas (habilidades): `fieldset` com `legend` como rótulo, caixas de seleção nativas com `accent-color: primary`, e a dica ligada a cada caixa. No erro, a dica vira a mensagem em `danger`; as caixas não ganham contorno vermelho (seriam 12 de uma vez).
+- Grupo de escolhas múltiplas (`SkillsField`, no editar perfil e no postar/editar ideia): `fieldset` com `legend` como rótulo, caixas de seleção nativas com `accent-color: primary`, e a dica ligada a cada caixa. No erro, a dica vira a mensagem em `danger`; as caixas não ganham contorno vermelho (seriam 12 de uma vez).
 
 ### Texto da interface
 
