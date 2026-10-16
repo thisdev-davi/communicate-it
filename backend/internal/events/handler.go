@@ -5,8 +5,11 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/thisdev-davi/comunica-faesa/backend/internal/ideas"
 )
@@ -47,6 +50,19 @@ type eventResponse struct {
 	Location    string         `json:"location"`
 	Author      authorResponse `json:"author"`
 	CreatedAt   time.Time      `json:"created_at"`
+	// Quantos confirmaram presença e se quem pede é um deles.
+	AttendeeCount int64 `json:"attendee_count"`
+	Going         bool  `json:"going"`
+	// Só quem está logado recebe a lista. omitzero tira só o nil: para o visitante o campo some,
+	// e o logado num evento sem confirmados recebe [].
+	Attendees []attendeeResponse `json:"attendees,omitzero"`
+}
+
+// Mesmos campos, com os mesmos nomes, do ListAttendeesRow gerado (por isso AvatarUrl): a conversão é direta.
+type attendeeResponse struct {
+	ID        int64   `json:"id"`
+	Name      string  `json:"name"`
+	AvatarUrl *string `json:"avatar_url"`
 }
 
 type errorResponse struct {
@@ -56,13 +72,8 @@ type errorResponse struct {
 
 // Create cria um evento; qualquer aluno logado, sem aprovação.
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
-	authorID, err := h.userID(r)
-	if err != nil {
-		internalError(w, "session", err)
-		return
-	}
-	if authorID == 0 {
-		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "unauthenticated"})
+	authorID, ok := h.loggedIn(w, r)
+	if !ok {
 		return
 	}
 	req, ok := readEvent(w, r)
@@ -85,7 +96,12 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List é a agenda: os eventos de hoje em diante, do mais próximo. Para todo mundo, visitante incluído.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.q.ListEvents(r.Context())
+	viewer, err := h.userID(r)
+	if err != nil {
+		internalError(w, "session", err)
+		return
+	}
+	rows, err := h.q.ListEvents(r.Context(), viewer)
 	if err != nil {
 		internalError(w, "list events", err)
 		return
@@ -95,6 +111,109 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		items = append(items, toResponse(row))
 	}
 	writeJSON(w, http.StatusOK, map[string][]eventResponse{"items": items})
+}
+
+// Get devolve um evento, para todo mundo; também os que já passaram. Quem está logado recebe a lista de quem vai.
+func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
+	viewer, err := h.userID(r)
+	if err != nil {
+		internalError(w, "session", err)
+		return
+	}
+	id, ok := pathID(r)
+	if !ok {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
+		return
+	}
+	row, err := h.q.GetEvent(r.Context(), GetEventParams{ID: id, Viewer: viewer})
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
+		return
+	}
+	if err != nil {
+		internalError(w, "get event", err)
+		return
+	}
+	resp := toResponse(ListEventsRow(row))
+	if viewer != 0 {
+		people, err := h.q.ListAttendees(r.Context(), id)
+		if err != nil {
+			internalError(w, "list attendees", err)
+			return
+		}
+		resp.Attendees = make([]attendeeResponse, 0, len(people)) // não-nil: sem confirmados, o logado recebe []
+		for _, p := range people {
+			resp.Attendees = append(resp.Attendees, attendeeResponse(p))
+		}
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// PutAttendance é o "vou": sem aprovação nem limite. Repetir não muda nada. Só evento da agenda (de hoje em diante).
+func (h *Handler) PutAttendance(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.loggedIn(w, r)
+	if !ok {
+		return
+	}
+	id, ok := pathID(r)
+	if !ok {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
+		return
+	}
+	upcoming, err := h.q.IsUpcoming(r.Context(), id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
+		return
+	}
+	if err != nil {
+		internalError(w, "is upcoming", err)
+		return
+	}
+	if !upcoming {
+		writeJSON(w, http.StatusConflict, errorResponse{Error: "past"})
+		return
+	}
+	if err := h.q.AddAttendee(r.Context(), AddAttendeeParams{EventID: id, UserID: userID}); err != nil {
+		internalError(w, "add attendee", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DeleteAttendance é o "desistir", até em evento passado. Responde 204 mesmo sem presença ou sem evento:
+// o resultado é o mesmo, a pessoa não está na lista.
+func (h *Handler) DeleteAttendance(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.loggedIn(w, r)
+	if !ok {
+		return
+	}
+	if id, ok := pathID(r); ok {
+		if err := h.q.RemoveAttendee(r.Context(), RemoveAttendeeParams{EventID: id, UserID: userID}); err != nil {
+			internalError(w, "remove attendee", err)
+			return
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// loggedIn devolve quem está logado; sem sessão já responde 401 (ou 500 se a sessão falhou) e devolve ok = false.
+func (h *Handler) loggedIn(w http.ResponseWriter, r *http.Request) (userID int64, ok bool) {
+	userID, err := h.userID(r)
+	if err != nil {
+		internalError(w, "session", err)
+		return 0, false
+	}
+	if userID == 0 {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "unauthenticated"})
+		return 0, false
+	}
+	return userID, true
+}
+
+// pathID lê o {id} da rota. Id que não é inteiro positivo é só um evento que não existe: quem chama responde 404 sem ir ao banco.
+func pathID(r *http.Request) (int64, bool) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	return id, err == nil && id > 0
 }
 
 // readEvent lê e valida o corpo. Com erro, já responde 400 ou 413 e devolve ok = false.
@@ -149,10 +268,13 @@ func toResponse(r ListEventsRow) eventResponse {
 		Location:    r.Location,
 		Author:      authorResponse{ID: r.AuthorID, Name: r.AuthorName, AvatarURL: r.AuthorAvatarUrl},
 		CreatedAt:   r.CreatedAt.UTC(),
+
+		AttendeeCount: r.AttendeeCount,
+		Going:         r.Going,
 	}
 }
 
-// writeJSON e internalError repetem os do pacote ideas de propósito, como no auth: um pacote "comum" iria contra a regra do projeto.
+// writeJSON e internalError (como loggedIn e pathID) repetem os do pacote ideas de propósito, como no auth: um pacote "comum" iria contra a regra do projeto.
 func internalError(w http.ResponseWriter, op string, err error) {
 	slog.Error(op, "err", err)
 	writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal"})

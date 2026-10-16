@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { Avatar } from "../../components/Avatar";
 import { CallOnDiscord } from "../../components/CallOnDiscord";
 import { IdeaCard } from "../../components/IdeaCard";
-import { InterestButton } from "../../components/InterestButton";
+import { JoinButton } from "../../components/JoinButton";
 import { SkillChips } from "../../components/SkillChips";
 import { StatePanel } from "../../components/StatePanel";
 import { type Idea, type Interest } from "../../ideas";
@@ -43,7 +43,10 @@ async function IdeaDetail({ params }: { params: PageProps<"/ideias/[id]">["param
         have={me.skills}
         // Visitante nem chega aqui; o autor não participa da própria ideia, e só ideia aberta recebe interessados
         // (a API também recusa as duas, 409).
-        action={!mine && open && <InterestButton ideaId={idea.id} interested={idea.interested} />}
+        action={
+          !mine &&
+          open && <JoinButton url={`/api/ideas/${idea.id}/interest`} on={idea.interested} labels={["Quero participar", "Interessado"]} />
+        }
       />
       {idea.interested && <p className={styles.hint}>Você está na lista. O autor vai te chamar no Discord.</p>}
       {!mine && !open && !idea.interested && <p className={styles.hint}>Esta ideia não está recebendo novos interessados.</p>}

@@ -18,6 +18,12 @@ type Event struct {
 	CreatedAt   time.Time
 }
 
+type EventAttendee struct {
+	EventID   int64
+	UserID    int64
+	CreatedAt time.Time
+}
+
 type Idea struct {
 	ID          int64
 	AuthorID    int64

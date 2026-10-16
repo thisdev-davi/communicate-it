@@ -10,6 +10,22 @@ import (
 	"time"
 )
 
+const addAttendee = `-- name: AddAttendee :exec
+INSERT INTO event_attendees (event_id, user_id) VALUES ($1, $2)
+ON CONFLICT DO NOTHING
+`
+
+type AddAttendeeParams struct {
+	EventID int64
+	UserID  int64
+}
+
+// Repetir não dá erro nem duplica: a chave (event_id, user_id) já existe e o insert vira nada.
+func (q *Queries) AddAttendee(ctx context.Context, arg AddAttendeeParams) error {
+	_, err := q.db.Exec(ctx, addAttendee, arg.EventID, arg.UserID)
+	return err
+}
+
 const createEvent = `-- name: CreateEvent :one
 
 WITH e AS (
@@ -18,7 +34,8 @@ WITH e AS (
     RETURNING id, author_id, title, description, starts_at, location, created_at
 )
 SELECT e.id, e.title, e.description, e.starts_at, e.location, e.created_at,
-       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
+       0::bigint AS attendee_count, false AS going
 FROM e
 JOIN users u ON u.id = e.author_id
 `
@@ -41,9 +58,14 @@ type CreateEventRow struct {
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
+	AttendeeCount   int64
+	Going           bool
 }
 
-// Create e List devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
+// Create, List e Get devolvem as mesmas colunas, na mesma ordem: assim as structs geradas são conversíveis entre si.
+// attendee_count e going dizem quantos confirmaram presença e se quem pede (viewer) é um deles; viewer 0 = visitante.
+// "De hoje em diante" é sempre no horário de Brasília: o evento de hoje fica aberto até o fim do dia, mesmo depois de começar.
+// Evento recém-criado ainda não tem confirmados: as duas colunas saem fixas.
 func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (CreateEventRow, error) {
 	row := q.db.QueryRow(ctx, createEvent,
 		arg.AuthorID,
@@ -63,13 +85,114 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Creat
 		&i.AuthorID,
 		&i.AuthorName,
 		&i.AuthorAvatarUrl,
+		&i.AttendeeCount,
+		&i.Going,
 	)
 	return i, err
 }
 
+const getEvent = `-- name: GetEvent :one
+SELECT e.id, e.title, e.description, e.starts_at, e.location, e.created_at,
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
+       (SELECT count(*) FROM event_attendees a WHERE a.event_id = e.id) AS attendee_count,
+       EXISTS (SELECT 1 FROM event_attendees a WHERE a.event_id = e.id AND a.user_id = $1) AS going
+FROM events e
+JOIN users u ON u.id = e.author_id
+WHERE e.id = $2
+`
+
+type GetEventParams struct {
+	Viewer int64
+	ID     int64
+}
+
+type GetEventRow struct {
+	ID              int64
+	Title           string
+	Description     string
+	StartsAt        time.Time
+	Location        string
+	CreatedAt       time.Time
+	AuthorID        int64
+	AuthorName      string
+	AuthorAvatarUrl *string
+	AttendeeCount   int64
+	Going           bool
+}
+
+// Também os que já passaram: a página continua no link.
+func (q *Queries) GetEvent(ctx context.Context, arg GetEventParams) (GetEventRow, error) {
+	row := q.db.QueryRow(ctx, getEvent, arg.Viewer, arg.ID)
+	var i GetEventRow
+	err := row.Scan(
+		&i.ID,
+		&i.Title,
+		&i.Description,
+		&i.StartsAt,
+		&i.Location,
+		&i.CreatedAt,
+		&i.AuthorID,
+		&i.AuthorName,
+		&i.AuthorAvatarUrl,
+		&i.AttendeeCount,
+		&i.Going,
+	)
+	return i, err
+}
+
+const isUpcoming = `-- name: IsUpcoming :one
+SELECT starts_at >= date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo'
+FROM events WHERE id = $1
+`
+
+// Se o evento ainda está na agenda: só esses recebem confirmação.
+func (q *Queries) IsUpcoming(ctx context.Context, id int64) (bool, error) {
+	row := q.db.QueryRow(ctx, isUpcoming, id)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const listAttendees = `-- name: ListAttendees :many
+SELECT u.id, u.name, u.avatar_url
+FROM event_attendees a
+JOIN users u ON u.id = a.user_id
+WHERE a.event_id = $1
+ORDER BY a.created_at, a.user_id
+`
+
+type ListAttendeesRow struct {
+	ID        int64
+	Name      string
+	AvatarUrl *string
+}
+
+// Em ordem de chegada: quem confirmou primeiro aparece primeiro.
+func (q *Queries) ListAttendees(ctx context.Context, eventID int64) ([]ListAttendeesRow, error) {
+	rows, err := q.db.Query(ctx, listAttendees, eventID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAttendeesRow
+	for rows.Next() {
+		var i ListAttendeesRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.AvatarUrl); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEvents = `-- name: ListEvents :many
 SELECT e.id, e.title, e.description, e.starts_at, e.location, e.created_at,
-       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url
+       u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,
+       (SELECT count(*) FROM event_attendees a WHERE a.event_id = e.id) AS attendee_count,
+       EXISTS (SELECT 1 FROM event_attendees a WHERE a.event_id = e.id AND a.user_id = $1) AS going
 FROM events e
 JOIN users u ON u.id = e.author_id
 WHERE e.starts_at >= date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo'
@@ -86,11 +209,12 @@ type ListEventsRow struct {
 	AuthorID        int64
 	AuthorName      string
 	AuthorAvatarUrl *string
+	AttendeeCount   int64
+	Going           bool
 }
 
-// De hoje em diante no horário de Brasília: o evento de hoje fica na agenda até o fim do dia, mesmo depois de começar.
-func (q *Queries) ListEvents(ctx context.Context) ([]ListEventsRow, error) {
-	rows, err := q.db.Query(ctx, listEvents)
+func (q *Queries) ListEvents(ctx context.Context, viewer int64) ([]ListEventsRow, error) {
+	rows, err := q.db.Query(ctx, listEvents, viewer)
 	if err != nil {
 		return nil, err
 	}
@@ -108,6 +232,8 @@ func (q *Queries) ListEvents(ctx context.Context) ([]ListEventsRow, error) {
 			&i.AuthorID,
 			&i.AuthorName,
 			&i.AuthorAvatarUrl,
+			&i.AttendeeCount,
+			&i.Going,
 		); err != nil {
 			return nil, err
 		}
@@ -117,4 +243,18 @@ func (q *Queries) ListEvents(ctx context.Context) ([]ListEventsRow, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const removeAttendee = `-- name: RemoveAttendee :exec
+DELETE FROM event_attendees WHERE event_id = $1 AND user_id = $2
+`
+
+type RemoveAttendeeParams struct {
+	EventID int64
+	UserID  int64
+}
+
+func (q *Queries) RemoveAttendee(ctx context.Context, arg RemoveAttendeeParams) error {
+	_, err := q.db.Exec(ctx, removeAttendee, arg.EventID, arg.UserID)
+	return err
 }

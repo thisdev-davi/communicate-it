@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -23,6 +25,16 @@ func do(t *testing.T, hf http.HandlerFunc, method, body string) *httptest.Respon
 	t.Helper()
 	rec := httptest.NewRecorder()
 	hf(rec, httptest.NewRequest(method, "/api/events", strings.NewReader(body)))
+	return rec
+}
+
+// doID chama um handler de /api/events/{id} com o {id} preenchido, como o roteador faria.
+func doID(t *testing.T, hf http.HandlerFunc, method, id string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(method, "/api/events/"+id, nil)
+	req.SetPathValue("id", id)
+	rec := httptest.NewRecorder()
+	hf(rec, req)
 	return rec
 }
 
@@ -99,9 +111,40 @@ func TestValidateFuture(t *testing.T) {
 
 func TestSessionErrorIs500(t *testing.T) {
 	failing := func(*http.Request) (int64, error) { return 0, errors.New("banco fora") }
-	rec := do(t, NewHandler(nil, failing).Create, http.MethodPost, body(future(time.Hour)))
-	if rec.Code != 500 || decode[errorResponse](t, rec).Error != "internal" {
-		t.Errorf("status = %d (%s), quer 500 internal", rec.Code, rec.Body)
+	h := NewHandler(nil, failing)
+	for name, hf := range map[string]http.HandlerFunc{
+		"POST": h.Create, "GET agenda": h.List, "GET um": h.Get, "PUT presença": h.PutAttendance, "DELETE presença": h.DeleteAttendance,
+	} {
+		if rec := doID(t, hf, http.MethodGet, "1"); rec.Code != 500 || decode[errorResponse](t, rec).Error != "internal" {
+			t.Errorf("%s: status = %d (%s), quer 500 internal", name, rec.Code, rec.Body)
+		}
+	}
+}
+
+// Sem sessão é 401 antes do id; id que não é inteiro positivo é 404 sem ir ao banco.
+func TestAttendanceRejectsVisitorAndBadID(t *testing.T) {
+	visitor, user := NewHandler(nil, loggedAs(0)), NewHandler(nil, loggedAs(1))
+	cases := []struct {
+		name       string
+		hf         http.HandlerFunc
+		id         string
+		wantStatus int
+		wantError  string
+	}{
+		{"vou sem sessão", visitor.PutAttendance, "1", 401, "unauthenticated"},
+		{"desistir sem sessão", visitor.DeleteAttendance, "1", 401, "unauthenticated"},
+		{"vou com id inválido", user.PutAttendance, "abc", 404, "not_found"},
+		{"evento com id zero", visitor.Get, "0", 404, "not_found"},
+	}
+	for _, tc := range cases {
+		rec := doID(t, tc.hf, http.MethodPut, tc.id)
+		if rec.Code != tc.wantStatus || decode[errorResponse](t, rec).Error != tc.wantError {
+			t.Errorf("%s: %d (%s), quer %d %s", tc.name, rec.Code, rec.Body, tc.wantStatus, tc.wantError)
+		}
+	}
+	// Desistir com id inválido não tem o que apagar: 204, como desistir de quem não estava na lista.
+	if rec := doID(t, user.DeleteAttendance, http.MethodDelete, "abc"); rec.Code != 204 {
+		t.Errorf("desistir com id inválido: %d, quer 204", rec.Code)
 	}
 }
 
@@ -145,6 +188,84 @@ func TestCreateAndList(t *testing.T) {
 		list := decode[struct{ Items []eventResponse }](t, do(t, NewHandler(pool, loggedAs(viewer)).List, http.MethodGet, "")).Items
 		if len(list) != 2 || list[0].ID != near.ID || list[1].ID != far.ID {
 			t.Errorf("%s: quer [%d %d], veio %+v", name, near.ID, far.ID, list)
+		}
+	}
+}
+
+// Fluxo do "vou" contra Postgres real: confirmar, contar, ver a lista, desistir e o evento passado.
+func TestAttendance(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+	var authorID, guestID int64
+	if err := pool.QueryRow(ctx, "INSERT INTO users (name) VALUES ('Organizador de Teste'), ('Aluna de Teste') RETURNING id").Scan(&authorID); err != nil {
+		t.Fatal(err)
+	}
+	guestID = authorID + 1 // RESTART IDENTITY no testDB: os ids saem em sequência
+	author, guest, visitor := NewHandler(pool, loggedAs(authorID)), NewHandler(pool, loggedAs(guestID)), NewHandler(pool, loggedAs(0))
+
+	rec := do(t, author.Create, http.MethodPost, body(future(time.Hour)))
+	if rec.Code != 201 {
+		t.Fatalf("POST: %d (%s)", rec.Code, rec.Body)
+	}
+	created := decode[eventResponse](t, rec)
+	if created.AttendeeCount != 0 || created.Going {
+		t.Errorf("evento novo já tem confirmados: %+v", created)
+	}
+	id := strconv.FormatInt(created.ID, 10)
+
+	// Confirmar duas vezes não duplica.
+	for range 2 {
+		if rec = doID(t, guest.PutAttendance, http.MethodPut, id); rec.Code != 204 {
+			t.Fatalf("PUT: %d (%s)", rec.Code, rec.Body)
+		}
+	}
+	got := decode[eventResponse](t, doID(t, guest.Get, http.MethodGet, id))
+	want := []attendeeResponse{{ID: guestID, Name: "Aluna de Teste"}}
+	if got.AttendeeCount != 1 || !got.Going || !reflect.DeepEqual(got.Attendees, want) {
+		t.Errorf("visto por quem vai: %+v", got)
+	}
+	// O criador não entra sozinho na lista; o visitante vê o número e não recebe a lista.
+	if got = decode[eventResponse](t, doID(t, author.Get, http.MethodGet, id)); got.Going || got.AttendeeCount != 1 {
+		t.Errorf("visto pelo criador: %+v", got)
+	}
+	rec = doID(t, visitor.Get, http.MethodGet, id)
+	if got = decode[eventResponse](t, rec); rec.Code != 200 || got.AttendeeCount != 1 || got.Going || strings.Contains(rec.Body.String(), `"attendees"`) {
+		t.Errorf("visto pelo visitante: %d %s", rec.Code, rec.Body)
+	}
+	list := decode[struct{ Items []eventResponse }](t, do(t, guest.List, http.MethodGet, "")).Items
+	if len(list) != 1 || !list[0].Going || list[0].AttendeeCount != 1 {
+		t.Errorf("agenda de quem vai: %+v", list)
+	}
+
+	// Desistir tira da lista; o logado num evento vazio recebe [].
+	if rec = doID(t, guest.DeleteAttendance, http.MethodDelete, id); rec.Code != 204 {
+		t.Fatalf("DELETE: %d (%s)", rec.Code, rec.Body)
+	}
+	rec = doID(t, guest.Get, http.MethodGet, id)
+	if got = decode[eventResponse](t, rec); got.AttendeeCount != 0 || got.Going || !strings.Contains(rec.Body.String(), `"attendees":[]`) {
+		t.Errorf("depois de desistir: %s", rec.Body)
+	}
+
+	// Evento de ontem: a página abre, confirmar é 409 past, desistir continua 204.
+	var past int64
+	if err := pool.QueryRow(ctx, "INSERT INTO events (author_id, title, description, starts_at, location) VALUES ($1, 'Passado', 'x', now() - interval '1 day 1 hour', 'abc') RETURNING id", authorID).Scan(&past); err != nil {
+		t.Fatal(err)
+	}
+	pastID := strconv.FormatInt(past, 10)
+	if rec = doID(t, guest.Get, http.MethodGet, pastID); rec.Code != 200 {
+		t.Errorf("GET passado: %d (%s)", rec.Code, rec.Body)
+	}
+	if rec = doID(t, guest.PutAttendance, http.MethodPut, pastID); rec.Code != 409 || decode[errorResponse](t, rec).Error != "past" {
+		t.Errorf("PUT passado: %d (%s), quer 409 past", rec.Code, rec.Body)
+	}
+	if rec = doID(t, guest.DeleteAttendance, http.MethodDelete, pastID); rec.Code != 204 {
+		t.Errorf("DELETE passado: %d, quer 204", rec.Code)
+	}
+
+	// Evento que não existe: 404 no GET e no PUT.
+	for name, hf := range map[string]http.HandlerFunc{"GET": guest.Get, "PUT": guest.PutAttendance} {
+		if rec = doID(t, hf, http.MethodGet, "999999"); rec.Code != 404 || decode[errorResponse](t, rec).Error != "not_found" {
+			t.Errorf("%s inexistente: %d (%s), quer 404 not_found", name, rec.Code, rec.Body)
 		}
 	}
 }

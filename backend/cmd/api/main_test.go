@@ -26,6 +26,7 @@ func TestRoutesBlockCrossOriginWrites(t *testing.T) {
 		{"logout forçado de outro site", http.MethodPost, "/api/auth/logout", "same-site", true},
 		{"apagar ideia de outro site", http.MethodDelete, "/api/ideas/1", "cross-site", true},
 		{"criar evento de outro site", http.MethodPost, "/api/events", "cross-site", true},
+		{"confirmar presença de outro site", http.MethodPut, "/api/events/1/attendance", "same-site", true},
 		{"post da própria página", http.MethodPost, "/api/ideas", "same-origin", false},
 		{"post sem navegador (curl)", http.MethodPost, "/api/ideas", "", false},
 		{"get de outro site passa", http.MethodGet, "/api/ideas/1", "cross-site", false},

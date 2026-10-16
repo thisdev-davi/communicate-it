@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../components/Button";
 import { Notice } from "../components/Notice";
 import { TextField } from "../components/TextField";
+import type { CommunityEvent } from "../events";
 import type { ApiError } from "../ideas";
 import styles from "../idea-form.module.css";
 
@@ -45,7 +46,8 @@ export function EventForm() {
         body: JSON.stringify({ ...data, starts_at: local && `${local}:00-03:00` }),
       });
       if (res.ok) {
-        router.push("/eventos"); // a página do evento é da fatia 14; o formulário fica travado até a troca de página
+        const saved: CommunityEvent = await res.json();
+        router.push(`/eventos/${saved.id}`); // o aluno vê o evento como os outros vão ver; o formulário fica travado até a troca de página
         return;
       }
       const body: ApiError = await res.json();

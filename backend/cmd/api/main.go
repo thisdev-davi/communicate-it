@@ -101,6 +101,9 @@ func routes(a *auth.Handler, h *ideas.Handler, ev *events.Handler) http.Handler 
 	mux.HandleFunc("DELETE /api/ideas/{id}/interest", h.DeleteInterest)
 	mux.HandleFunc("POST /api/events", ev.Create)
 	mux.HandleFunc("GET /api/events", ev.List)
+	mux.HandleFunc("GET /api/events/{id}", ev.Get)
+	mux.HandleFunc("PUT /api/events/{id}/attendance", ev.PutAttendance)
+	mux.HandleFunc("DELETE /api/events/{id}/attendance", ev.DeleteAttendance)
 	p := http.NewCrossOriginProtection()
 	p.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

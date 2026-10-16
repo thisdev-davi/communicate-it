@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -33,12 +34,14 @@ async function CreateAction() {
 
 // A agenda (docs/contratos/fatia-13-agenda-de-eventos.md): de hoje em diante, do mais próximo, para todo mundo.
 // Logado sem curso ainda não terminou o cadastro: vai para lá antes, como no mural.
+// Repassa o cookie do navegador: só com ele a API diz em quais eventos a pessoa confirmou presença.
 async function Agenda() {
-  const me = await getMe(); // também deixa a página dinâmica (lê o cookie): a agenda nunca sai do build
+  const me = await getMe();
   if (me && !me.course) redirect("/cadastro");
+  const cookie = (await cookies()).toString();
   let items: CommunityEvent[];
   try {
-    const res = await fetch(`${API_URL}/api/events`);
+    const res = await fetch(`${API_URL}/api/events`, { headers: { cookie } });
     if (!res.ok) throw new Error(`status ${res.status}`);
     ({ items } = await res.json());
   } catch (err) {
