@@ -4,6 +4,8 @@ Primeira fatia da fase de eventos (decisões na seção [Eventos do PRD](../PRD.
 
 Mudou o contrato? Atualiza este arquivo **antes** do código.
 
+> **Atualizado pela [fatia 14](fatia-14-presenca-em-eventos.md):** todo evento ganha `attendee_count` e `going`; o card leva à página do evento (`/eventos/<id>`), e criar evento vai para a página dele.
+
 ## Fora desta fatia (de propósito)
 
 Página do evento e confirmação de presença "vou" (fatia 14), cargo de moderação (fatia 15), editar e apagar evento (fatia 16). Também ficam fora: horário de fim, tipo do evento, limite de vagas, ligação com uma ideia, seção de eventos passados, eventos no perfil, paginação.
