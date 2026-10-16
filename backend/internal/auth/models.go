@@ -8,6 +8,16 @@ import (
 	"time"
 )
 
+type Event struct {
+	ID          int64     `json:"id"`
+	AuthorID    int64     `json:"author_id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	StartsAt    time.Time `json:"starts_at"`
+	Location    string    `json:"location"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
 type Idea struct {
 	ID          int64      `json:"id"`
 	AuthorID    int64      `json:"author_id"`
