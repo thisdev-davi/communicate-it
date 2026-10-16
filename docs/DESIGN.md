@@ -48,7 +48,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 | etiqueta (eyebrow) | 11px / 700, espaçada | curso · categoria no card |
 | botão | 13px / 700 (12px no `sm`) | `Button` |
 
-- **Caixa alta só em botões e na etiqueta do card.** Títulos de página e de seção ficam em caixa normal: decisão do Davi, que diverge do artefato. Escreva o texto em caixa normal no código, porque a caixa alta vem do CSS e assim o leitor de tela não soletra.
+- **Caixa alta só em botões, na etiqueta do card e no mês do bloco de data do evento.** Títulos de página e de seção ficam em caixa normal: decisão do Davi, que diverge do artefato. Escreva o texto em caixa normal no código, porque a caixa alta vem do CSS e assim o leitor de tela não soletra.
 - Títulos de ideias ficam como o autor escreveu.
 
 ### Espaço, raio e sombra
@@ -77,6 +77,9 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   | `users` | vagas |
   | `hand` | interessados |
   | `calendar` | data |
+  | `calendar-plus` | Criar evento |
+  | `clock` | hora do evento |
+  | `map-pin` | local do evento |
   | `circle-check` | sucesso, "Você participa", "concluída em" |
   | `hand` | também no "Quero participar" (a mão levantada) |
   | `check` | "Interessado" (a mão vira check ao entrar) |
@@ -92,9 +95,9 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 
 - **Coluna da página:** conteúdo com no máximo 1040px, centralizado, com recuo lateral `space-6` (`space-4` no celular). Páginas de leitura e formulário (ideia, postar) usam a coluna mais estreita, de 760px. O perfil usa a de 1040px, porque tem a grade de cards.
 - **Cabeçalho:** a barra e o conteúdo dela vão de ponta a ponta, com recuo `space-6` (`space-4` no celular): o logo fica colado à esquerda da tela e o usuário à direita, fora da coluna do conteúdo. A foto e o nome do usuário são uma pílula que leva ao próprio perfil ("Meu perfil" para o leitor de tela); no celular, só a foto.
-- **Navegação:** links no cabeçalho, colados no logo ("Mural", "Concluídos" e, só para quem está logado, "Minhas ideias"), com `aria-current="page"` na página atual, que ganha cor `primary` e fundo `primary-soft` (nunca só a cor). Links e botões da barra são pílulas com o mesmo hover: texto `ink` sobre `surface-sunken`, que não se confunde com a página atual. Barra no topo, sem menu lateral nem hambúrguer: no celular (até 600px), os links descem para uma segunda linha da barra.
+- **Navegação:** links no cabeçalho, colados no logo ("Mural", "Eventos", "Concluídos" e, só para quem está logado, "Minhas ideias"), com `aria-current="page"` na página atual, que ganha cor `primary` e fundo `primary-soft` (nunca só a cor). Links e botões da barra são pílulas com o mesmo hover: texto `ink` sobre `surface-sunken`, que não se confunde com a página atual. Barra no topo, sem menu lateral nem hambúrguer: no celular (até 600px), os links descem para uma segunda linha da barra.
 - **Topo do mural:** título e texto de apoio à esquerda; a ação da página ("Postar ideia") à direita, alinhada pela base. No celular, a ação desce.
-- **Voltar:** páginas internas começam com o link "Voltar ao mural". A página de editar volta para a ideia ("Voltar à ideia").
+- **Voltar:** páginas internas começam com o link "Voltar ao mural". A página de editar volta para a ideia ("Voltar à ideia"), e a de criar evento volta à agenda ("Voltar aos eventos").
 
 ### Cards do mural
 
@@ -111,6 +114,13 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - Quem já participa vê a borda `accent` e o selo "Você participa" na linha do autor.
 - **Rostos dos interessados**, como a lista de contribuidores do GitHub: fotos de 24px sobrepostas (4px), com um anel da cor do card; até 3 no card e 8 na página, e "+N" para o resto. Sem foto, as iniciais. Só quem está logado vê; o visitante vê o número. O autor guarda 140px para o nome: se rostos e selo não couberem ao lado, descem para a linha de baixo.
 
+### Cards de evento
+
+- **`EventCard`**, na mesma grade do mural: à esquerda, o bloco de data (dia 28px / 800 e mês curto 11px / 700 em caixa alta, `on-primary` sobre `primary`, 64px de largura, `radius-sm`) com o losango `faesa-amber` saindo da borda direita.
+- À direita: título em até 2 linhas; a hora ("sex, 19:00", com `clock`) e o local (`map-pin`), em `ink` 13px com o ícone em `ink-muted`; a descrição em até 3 linhas; e, no rodapé (sempre embaixo, com a divisória `line`), a foto e o nome do organizador, que levam ao perfil dele.
+- Data e hora sempre no horário de Brasília (`timeZone: "America/Sao_Paulo"`). O bloco de data é `aria-hidden`: o leitor de tela ouve a data por extenso na linha da hora ("20 de outubro, ter, 19:00"), e "Organizado por" antes do nome.
+- O card não tem ação, como o `IdeaCard`. O único destino, por enquanto, é o perfil do organizador.
+
 ### Páginas e fluxos
 
 - **Mural (`/`):**
@@ -118,6 +128,8 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   - o visitante vê a prévia de 3 ideias e o convite para entrar;
   - quem está logado vê tudo e o botão "Postar ideia";
   - logado sem curso vai para `/cadastro`.
+- **Eventos (`/eventos`):** a agenda, de hoje em diante e do mais próximo, para todo mundo (o visitante vê a lista inteira e o convite para entrar e criar). Topo como o do mural, com "Criar evento" à direita só para quem está logado. Vazio: "Nenhum evento marcado". Logado sem curso vai para `/cadastro`.
+- **Criar evento (`/eventos/novo`):** só para quem está logado e tem curso. Coluna dos formulários, com título, descrição, "Data e hora" (`<input type="datetime-local">` nativo, sem `min`: os erros são os da API) e local lado a lado (empilhados no celular). O texto de apoio avisa que o horário é o de Brasília. Depois de criar, volta para `/eventos`.
 - **Concluídos (`/concluidas`):** a vitrine, com a mesma grade do mural e as concluídas mais recentes primeiro. O visitante vê a prévia de 3 e o convite para entrar. É onde o build in public vai entrar.
 - **Minhas ideias (`/minhas-ideias`):** só para quem está logado. Todas as ideias do aluno, em qualquer status, na mesma grade do mural, com "Postar ideia" no topo. Os controles ficam na página de cada ideia.
 - **Página da ideia (`/ideias/<id>`):**
@@ -190,7 +202,8 @@ Previsto no artefato, mas sem código ainda. Não é regra até ser implementado
 - Rascunho do formulário de postar em `sessionStorage`, para nada se perder se o aluno sair com texto digitado.
 - @ do Discord do autor no card, só para quem está logado.
 - Modal "Ideia postada" (hoje o envio leva direto à página da ideia).
-- Abas (`Tabs`) para Comentários/Interessados e `EventCard`: entram com as fatias que precisarem deles.
+- Abas (`Tabs`) para Comentários/Interessados: entram com a fatia que precisar delas.
+- Botão de presença no evento: entra na fatia 14, na página do evento.
 
 ## Onde o artefato diverge (para atualizar no chat do design system)
 
@@ -202,4 +215,5 @@ Previsto no artefato, mas sem código ainda. Não é regra até ser implementado
 - `IdeaCard`: o artefato tem o "Quero participar" no card e a altura livre. **No front, o card não tem ação, tem altura fixa, usa a sigla do curso e o autor é um link para o perfil.**
 - Título da página da ideia: o artefato tem `title-1` com 28px. **O front usa 24px.**
 - Botões: o artefato só tem `radius-sm`. **O front usa pílula no "Quero participar" e na barra do topo, e o status do autor são selos clicáveis.**
+- `EventCard`: o artefato tem o selo de tipo ("Hackathon"), a hora como "19h", a contagem de confirmados e o botão de presença no card. **No front, o evento não tem tipo, a hora sai como "19:00", o card mostra local, descrição e organizador, e não tem ação.**
 - Cabeçalho: o artefato alinha o conteúdo da barra à coluna da página. **O front estica a barra de ponta a ponta, com o logo à esquerda.**
