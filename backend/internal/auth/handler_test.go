@@ -15,10 +15,11 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// fakeDiscord imita as três chamadas que o login faz ao Discord. name e memberStatus mudam o que ele responde.
+// fakeDiscord imita as três chamadas que o login faz ao Discord. name, memberStatus e roles mudam o que ele responde.
 type fakeDiscord struct {
 	name         string
 	memberStatus int
+	roles        []string // cargos do membro no servidor
 }
 
 func (f *fakeDiscord) start(t *testing.T) *httptest.Server {
@@ -41,7 +42,7 @@ func (f *fakeDiscord) start(t *testing.T) *httptest.Server {
 	})
 	mux.HandleFunc("GET /users/@me/guilds/guild-1/member", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(f.memberStatus)
-		io.WriteString(w, `{}`)
+		json.NewEncoder(w).Encode(map[string]any{"roles": f.roles})
 	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -50,7 +51,7 @@ func (f *fakeDiscord) start(t *testing.T) *httptest.Server {
 
 // newTestHandler aponta o OAuth e a API do Discord para o servidor falso.
 func newTestHandler(db DBTX, discord *httptest.Server) *Handler {
-	h := NewHandler(db, "client", "secret", "http://localhost:3000/api/auth/discord/callback", "guild-1")
+	h := NewHandler(db, "client", "secret", "http://localhost:3000/api/auth/discord/callback", "guild-1", []string{"role-mod", "role-admin"})
 	if discord != nil {
 		h.oauth.Endpoint = oauth2.Endpoint{AuthURL: discord.URL + "/authorize", TokenURL: discord.URL + "/token"}
 		h.discordAPI = discord.URL
@@ -183,7 +184,7 @@ func TestLoginMeLogout(t *testing.T) {
 	// Primeiro login: ainda sem curso, vai para o cadastro.
 	session := login("/cadastro")
 	rec := me(session)
-	want := `{"id":1,"name":"Ana","avatar_url":"https://cdn.discordapp.com/avatars/9001/abc.png","course":null,"skills":[]}`
+	want := `{"id":1,"name":"Ana","avatar_url":"https://cdn.discordapp.com/avatars/9001/abc.png","course":null,"skills":[],"is_moderator":false}`
 	if rec.Code != 200 || strings.TrimSpace(rec.Body.String()) != want {
 		t.Fatalf("me: %d %s, quer %s", rec.Code, rec.Body, want)
 	}
@@ -207,6 +208,7 @@ func TestLoginMeLogout(t *testing.T) {
 		t.Fatalf("pedido inválido gravou o curso: %s", body)
 	}
 
+	// O PATCH devolve o mesmo corpo do GET, ainda sem moderação.
 	rec = setCourse(session, `{"course":" cc "}`)
 	want = strings.Replace(want, `"course":null`, `"course":"cc"`, 1)
 	if rec.Code != 200 || strings.TrimSpace(rec.Body.String()) != want {
@@ -218,9 +220,9 @@ func TestLoginMeLogout(t *testing.T) {
 
 	// Habilidades (fatia 11): gravadas sem repetição e na ordem do catálogo; sem o campo, não mudam; [] limpa.
 	skills := []struct{ name, body, want string }{
-		{"limpa e ordena", `{"course":"ads","skills":["data","backend","data"]}`, `"course":"ads","skills":["backend","data"]}`},
-		{"sem o campo mantém", `{"course":"cc"}`, `"course":"cc","skills":["backend","data"]}`},
-		{"vazio limpa", `{"course":"cc","skills":[]}`, `"course":"cc","skills":[]}`},
+		{"limpa e ordena", `{"course":"ads","skills":["data","backend","data"]}`, `"course":"ads","skills":["backend","data"],"is_moderator":false}`},
+		{"sem o campo mantém", `{"course":"cc"}`, `"course":"cc","skills":["backend","data"],"is_moderator":false}`},
+		{"vazio limpa", `{"course":"cc","skills":[]}`, `"course":"cc","skills":[],"is_moderator":false}`},
 	}
 	for _, tc := range skills {
 		rec := setCourse(session, tc.body)
@@ -247,6 +249,21 @@ func TestLoginMeLogout(t *testing.T) {
 	session = login("/")
 	if body := me(session).Body.String(); !strings.Contains(body, `"id":1,"name":"Ana Maria"`) {
 		t.Errorf("nome não atualizou: %s", body)
+	}
+
+	// Cargo de moderação (fatia 15): relido a cada login. Um cargo qualquer não conta; um dos configurados liga; sem ele, desliga.
+	for _, tc := range []struct {
+		roles []string
+		want  string
+	}{
+		{[]string{"role-outro"}, `"is_moderator":false`},
+		{[]string{"role-outro", "role-admin"}, `"is_moderator":true`},
+		{nil, `"is_moderator":false`},
+	} {
+		fake.roles = tc.roles
+		if body := me(login("/")).Body.String(); !strings.Contains(body, tc.want) {
+			t.Errorf("cargos %v: %s, quer %s", tc.roles, body, tc.want)
+		}
 	}
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
