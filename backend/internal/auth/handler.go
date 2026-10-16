@@ -12,6 +12,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -38,10 +39,11 @@ type Handler struct {
 	oauth      *oauth2.Config
 	discordAPI string // base da API REST do Discord; os testes apontam para um servidor falso
 	guildID    string
-	secure     bool // cookies só por HTTPS: ligado quando a Redirect URL é https (produção)
+	modRoles   []string // ids dos cargos do servidor que dão moderação (DISCORD_MOD_ROLE_IDS)
+	secure     bool     // cookies só por HTTPS: ligado quando a Redirect URL é https (produção)
 }
 
-func NewHandler(db DBTX, clientID, clientSecret, redirectURL, guildID string) *Handler {
+func NewHandler(db DBTX, clientID, clientSecret, redirectURL, guildID string, modRoles []string) *Handler {
 	return &Handler{
 		q: New(db),
 		oauth: &oauth2.Config{
@@ -53,6 +55,7 @@ func NewHandler(db DBTX, clientID, clientSecret, redirectURL, guildID string) *H
 		},
 		discordAPI: "https://discord.com/api/v10",
 		guildID:    guildID,
+		modRoles:   modRoles,
 		secure:     strings.HasPrefix(redirectURL, "https://"),
 	}
 }
@@ -212,7 +215,10 @@ func (h *Handler) discordUser(ctx context.Context, code string) (UpsertDiscordUs
 	if u.ID == "" {
 		return UpsertDiscordUserRow{}, errors.New("discord não devolveu o id do usuário")
 	}
-	status, err := get(ctx, client, h.discordAPI+"/users/@me/guilds/"+h.guildID+"/member", nil)
+	var member struct {
+		Roles []string `json:"roles"` // ids dos cargos da pessoa no servidor
+	}
+	status, err := get(ctx, client, h.discordAPI+"/users/@me/guilds/"+h.guildID+"/member", &member)
 	if status == http.StatusNotFound {
 		return UpsertDiscordUserRow{}, errNotMember
 	}
@@ -229,6 +235,8 @@ func (h *Handler) discordUser(ctx context.Context, code string) (UpsertDiscordUs
 		DiscordID: &u.ID,
 		Name:      cmp.Or(u.GlobalName, u.Username),
 		AvatarUrl: avatar,
+		// Moderador é quem tem pelo menos um dos cargos configurados; regravado a cada login (docs/contratos/fatia-15-cargo-de-moderacao.md).
+		IsModerator: slices.ContainsFunc(member.Roles, func(r string) bool { return slices.Contains(h.modRoles, r) }),
 	})
 }
 

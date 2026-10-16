@@ -51,11 +51,12 @@ type Session struct {
 }
 
 type User struct {
-	ID        int64     `json:"id"`
-	DiscordID *string   `json:"discord_id"`
-	Name      string    `json:"name"`
-	AvatarUrl *string   `json:"avatar_url"`
-	Course    *string   `json:"course"`
-	CreatedAt time.Time `json:"created_at"`
-	Skills    []string  `json:"skills"`
+	ID          int64     `json:"id"`
+	DiscordID   *string   `json:"discord_id"`
+	Name        string    `json:"name"`
+	AvatarUrl   *string   `json:"avatar_url"`
+	Course      *string   `json:"course"`
+	CreatedAt   time.Time `json:"created_at"`
+	Skills      []string  `json:"skills"`
+	IsModerator bool      `json:"is_moderator"`
 }

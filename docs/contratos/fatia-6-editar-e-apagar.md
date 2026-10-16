@@ -5,6 +5,8 @@ Objetivo único: o autor corrige a própria ideia ou a apaga de vez, direto da p
 Mudou o contrato? Atualiza este arquivo **antes** do código.
 
 > **Atualizado pela [fatia 12](fatia-12-habilidades-da-ideia.md):** o `PUT` aceita `skills`.
+>
+> **Atualizado pela [fatia 15](fatia-15-cargo-de-moderacao.md):** o `DELETE` também aceita um moderador. Editar continua só com o autor.
 
 ## Fora desta fatia (de propósito)
 

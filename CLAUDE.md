@@ -4,7 +4,8 @@ Plataforma para alunos de TI da FAESA acharem parceiros de projeto (mural de ide
 
 ## Leia antes de qualquer tarefa
 
-- `docs/PRD.md` — escopo do MVP, modelo de dados, regras de negócio e o que está fora de escopo. É a fonte da verdade do produto.
+- `README.md`, seção **Status** — o que já está feito e qual é a próxima fatia.
+- `docs/PRD.md` — escopo do MVP, modelo de dados, regras de negócio e o que está fora de escopo. É a fonte da verdade do produto. A fase em andamento tem a própria seção (hoje, "Fase de eventos"), com a situação de cada fatia e o próximo passo.
 - `docs/IDEIA.md` — visão, fila de fases futuras e a régua de decisão.
 - `docs/contratos/` — contratos de API por fatia. Front e back codam contra o contrato; se precisar mudar, mude o contrato primeiro e avise.
 - `docs/DESIGN.md` — regras de interface (visual, padrões de tela, texto e acessibilidade). Obrigatório em qualquer mudança de tela, componente ou texto da interface.
