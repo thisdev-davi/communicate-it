@@ -10,6 +10,7 @@ export type Me = {
   avatar_url: string | null;
   course: string | null;
   skills: string[]; // fatia 11 (docs/contratos/fatia-11-habilidades.md)
+  is_moderator: boolean; // fatia 15 (docs/contratos/fatia-15-cargo-de-moderacao.md): apaga qualquer ideia
 };
 
 // Quem está logado, ou null para visitante. Roda no servidor e repassa o cookie do navegador para a API Go.

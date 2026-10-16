@@ -6,9 +6,9 @@ import { Button, ButtonLink } from "../../components/Button";
 import styles from "./ideia.module.css";
 import { StatusControl } from "./status-control";
 
-// Painel "Sua ideia", só para o autor: status (fatia 7), editar e apagar (docs/contratos/fatia-6-editar-e-apagar.md).
+// Apagar a ideia, do autor (docs/contratos/fatia-6-editar-e-apagar.md) ou do moderador (fatia 15).
 // Apagar é de vez, então pede confirmação na caixa nativa do navegador (já acessível, sem modal próprio).
-export function AuthorPanel({ ideaId, status }: { ideaId: number; status: string }) {
+function useDeleteIdea(ideaId: number) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [failed, setFailed] = useState(false);
@@ -31,6 +31,12 @@ export function AuthorPanel({ ideaId, status }: { ideaId: number; status: string
     });
   }
 
+  return { remove, pending, failed };
+}
+
+// Painel "Sua ideia", só para o autor: status (fatia 7), editar e apagar.
+export function AuthorPanel({ ideaId, status }: { ideaId: number; status: string }) {
+  const { remove, pending, failed } = useDeleteIdea(ideaId);
   return (
     <section className={`card ${styles.panel}`} aria-labelledby="sua-ideia">
       <h2 id="sua-ideia" className={styles.section}>
@@ -41,6 +47,29 @@ export function AuthorPanel({ ideaId, status }: { ideaId: number; status: string
         <ButtonLink href={`/ideias/${ideaId}/editar`} variant="secondary">
           Editar ideia
         </ButtonLink>
+        <Button variant="danger" disabled={pending} onClick={remove}>
+          {pending ? "Apagando…" : "Apagar ideia"}
+        </Button>
+      </div>
+      {failed && (
+        <p className={styles.error} role="alert">
+          Não foi possível apagar. Tente de novo.
+        </p>
+      )}
+    </section>
+  );
+}
+
+// Painel "Moderação": o moderador que não é o autor só apaga (docs/contratos/fatia-15-cargo-de-moderacao.md).
+export function ModeratorPanel({ ideaId }: { ideaId: number }) {
+  const { remove, pending, failed } = useDeleteIdea(ideaId);
+  return (
+    <section className={`card ${styles.panel}`} aria-labelledby="moderacao">
+      <h2 id="moderacao" className={styles.section}>
+        Moderação
+      </h2>
+      <p className={styles.hint}>Você pode apagar esta ideia porque tem o cargo de moderação no Discord.</p>
+      <div className={styles.actions}>
         <Button variant="danger" disabled={pending} onClick={remove}>
           {pending ? "Apagando…" : "Apagar ideia"}
         </Button>
