@@ -153,7 +153,7 @@ Decidida em 17 de outubro de 2026 (item 6 das funcionalidades). Duas fatias, cad
 
 | fatia | conteúdo | situação |
 |---|---|---|
-| 17 — filtros do mural | status, curso, categoria e habilidade no `GET /api/ideas` e no mural, só para quem está logado | feita ([contrato](contratos/fatia-17-filtros-do-mural.md)) |
+| 17 — filtros do mural | status, curso, categoria e habilidade no `GET /api/ideas` e no mural, só para quem está logado | feita ([contrato](contratos/fatia-17-filtros-do-mural.md), PR #34) |
 | 18 — busca por texto | busca no título e na descrição | **próxima**: começa pelo `grill-me` (`ILIKE` ou busca do Postgres, onde fica a caixa) |
 
 - Um valor por filtro, e eles se somam. O filtro fica na URL, num formulário GET nativo.
