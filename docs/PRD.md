@@ -76,7 +76,6 @@ Um aluno posta várias ideias; cada ideia reúne vários interessados; perfis e 
 - Lista de ideias postadas, mais recentes primeiro.
 - Cada card mostra título, curso, categoria, vagas e habilidades procuradas.
 - Botão para postar uma nova ideia (título, descrição, curso, categoria, quantas pessoas precisa, habilidades procuradas).
-- Comentários em cada ideia.
 
 **3. Participar de uma ideia**
 
@@ -122,7 +121,9 @@ Decidida em 16 de outubro de 2026. Quatro fatias, nesta ordem, cada uma com o pr
 
 - A fase está completa: as quatro fatias foram feitas. O que ficou de fora de propósito está em "Fica para depois", no fim desta seção.
 - Deploy: todo merge na `main` sobe sozinho e roda as migrations. Para a moderação valer em produção, o root precisa preencher `DISCORD_MOD_ROLE_IDS` no `.env` da VPS e copiar o `compose.prod.yaml` novo (README, "Mudou o `compose.prod.yaml`"). Sem isso, a API sobe normalmente, só que sem moderadores.
-- Próximo do MVP, fora desta fase: comentários nas ideias e descoberta (filtros e busca), itens 2 e 6 das funcionalidades. Cada um começa pelo `grill-me` do Davi.
+- Decidido em 17 de outubro de 2026: comentários nas ideias saíram do MVP. A conversa já vive no Discord, o "quero participar" e o "Chamar no Discord" cobrem a dúvida sobre a ideia, e comentário traria moderação nova. Foram para a fila em `IDEIA.md`.
+- Próximo: a fase de descoberta (filtros e busca, item 6 das funcionalidades), que começa pelo `grill-me` do Davi.
+- Lançamento: a plataforma é aberta para a comunidade no Discord assim que a fatia 16 estiver na `main`, sem esperar a descoberta. O uso real mostra a urgência dos filtros.
 
 **Evento**
 
@@ -166,5 +167,6 @@ Decidida em 16 de outubro de 2026. Quatro fatias, nesta ordem, cada uma com o pr
 - Build in public (acompanhamento diário), seguir pessoas e feed.
 - "Tô disponível" para aluno sem ideia.
 - Link de repositório na vitrine, hackathons e desafios internos.
+- Comentários nas ideias (a conversa fica no Discord).
 
 **Régua de decisão:** a pergunta não é "isso é legal?", é "sem isso, a dor principal continua sem solução?". Se a resposta é não, é desejável, não essencial — e vai para a fila.
