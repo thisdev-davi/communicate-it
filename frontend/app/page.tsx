@@ -44,7 +44,7 @@ async function Mural({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
       {me && <IdeaFilters values={filters} />}
       {/* Concluídas ficam na vitrine (/concluidas): o mural traz só as abertas e em andamento. */}
       <IdeaList
-        path={filters.size > 0 ? `/api/ideas?${filters}` : "/api/ideas"}
+        path={`/api/ideas?${filters}`}
         errorTitle="Não foi possível carregar o mural"
         emptyTitle={filtered ? "Nenhuma ideia com esses filtros" : "Nenhuma ideia ainda"}
         emptyText={
