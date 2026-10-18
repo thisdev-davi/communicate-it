@@ -652,6 +652,89 @@ func TestListFilters(t *testing.T) {
 	}
 }
 
+// Busca inválida para antes do banco, inclusive para o visitante. 100 caracteres com acento ainda passam (conta caractere, não byte).
+func TestListRejectsBadSearch(t *testing.T) {
+	for _, tc := range []struct{ q, want string }{
+		{strings.Repeat("a", 101), "deve ter até 100 caracteres"},
+		{"%00", "contém caractere inválido"},
+		{"%FF", "contém caractere inválido"},
+	} {
+		for _, id := range []int64{0, 1} {
+			rec := httptest.NewRecorder()
+			NewHandler(nil, loggedAs(id)).List(rec, httptest.NewRequest(http.MethodGet, "/api/ideas?q="+tc.q, nil))
+			if got := decode[errorResponse](t, rec); rec.Code != 400 || got.Error != "validation_failed" || got.Fields["q"] != tc.want {
+				t.Errorf("?q=%.10s (usuário %d): %d (%s), quer 400 %q", tc.q, id, rec.Code, rec.Body, tc.want)
+			}
+		}
+	}
+	fields := map[string]string{}
+	q := strings.Repeat("ã", 100)
+	if got := search(httptest.NewRequest(http.MethodGet, "/api/ideas?q=%20"+q+"%20", nil), fields); len(fields) > 0 || got == nil || *got != "%"+q+"%" {
+		t.Errorf("100 caracteres com acento: %v %v", fields, got)
+	}
+}
+
+// Busca contra Postgres real: título, descrição, sem acento, soma com filtro, curinga literal e visitante.
+func TestListSearch(t *testing.T) {
+	pool := testDB(t)
+	var authorID int64
+	if err := pool.QueryRow(context.Background(), `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID); err != nil {
+		t.Fatal(err)
+	}
+	author, visitor := NewHandler(pool, loggedAs(authorID)), NewHandler(pool, loggedAs(0))
+	post := func(title, description, course string) int64 {
+		t.Helper()
+		body, _ := json.Marshal(map[string]any{"title": title, "description": description, "course": course, "category": "web", "slots": 2})
+		rec := do(t, author.Create, http.MethodPost, string(body))
+		if rec.Code != 201 {
+			t.Fatalf("POST: %d (%s)", rec.Code, rec.Body)
+		}
+		return decode[ideaResponse](t, rec).ID
+	}
+	a := post("Maratona de Programação", "Treino semanal", "cc")
+	b := post("App de carona", "Front em React, back em Go", "ads")
+	c := post("Bolsa de 50% no curso", "Quem topa?", "cc")
+	d := post("Site do DA", "Front em react_native", "eng")
+
+	list := func(h *Handler, query string) []int64 {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		h.List(rec, httptest.NewRequest(http.MethodGet, "/api/ideas?"+query, nil))
+		if rec.Code != 200 {
+			t.Fatalf("GET ?%s: %d (%s)", query, rec.Code, rec.Body)
+		}
+		got := []int64{}
+		for _, it := range decode[struct{ Items []ideaResponse }](t, rec).Items {
+			got = append(got, it.ID)
+		}
+		return got
+	}
+	for _, tc := range []struct {
+		name string
+		h    *Handler
+		q    string
+		want []int64
+	}{
+		{"pelo título", author, "q=carona", []int64{b}},
+		{"pela descrição", author, "q=semanal", []int64{a}},
+		{"sem acento nem maiúscula", author, "q=PROGRAMACAO", []int64{a}},
+		{"com acento acha sem acento", author, "q=s%C3%ADte", []int64{d}}, // "síte"
+		{"soma com filtro", author, "q=react&course=ads", []int64{b}},
+		{"% é literal", author, "q=50%25", []int64{c}},
+		{"% sozinho não é curinga", author, "q=%25", []int64{c}},
+		{"_ é literal", author, "q=react_", []int64{d}}, // como curinga, acharia também o "React," de b
+		{`\ é literal`, author, "q=%5C", []int64{}},     // sem escape, viraria o padrão '%\%' e acharia o 50% de c
+		{"espaços das pontas saem", author, "q=%20%20carona%20", []int64{b}},
+		{"vazio é sem busca", author, "q=%20", []int64{d, c, b, a}},
+		{"nada bate", author, "q=kotlin", []int64{}},
+		{"visitante ignora a busca", visitor, "q=carona", []int64{d, c, b}},
+	} {
+		if got := list(tc.h, tc.q); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s: %v, quer %v", tc.name, got, tc.want)
+		}
+	}
+}
+
 // Minhas ideias contra Postgres real: só as de quem pede, em todos os status, e 401 para visitante.
 func TestMine(t *testing.T) {
 	pool := testDB(t)
