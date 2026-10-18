@@ -28,7 +28,9 @@ Em desenvolvimento, construído em fatias verticais (tela → API → banco).
 - [x] Fatia 14: página do evento, "Vou participar" e lista de quem vai
 - [x] Fatia 15: cargo de moderação lido do Discord; o moderador apaga qualquer ideia
 - [x] Fatia 16: o criador e o moderador editam e apagam o evento
-- [ ] Ainda do MVP: descoberta, com filtros e busca (**próximo**: começa pelo `grill-me`; ver [PRD](docs/PRD.md)). Comentários saíram do MVP e foram para a fila.
+- [x] Fatia 17: filtros do mural por status, curso, categoria e habilidade
+- [x] Fatia 18: busca por texto no mural, sem diferenciar maiúscula nem acento
+- [x] Descoberta (fatias 17 e 18), a última parte do MVP. Comentários saíram do MVP e foram para a fila.
 
 Cada fatia tem o contrato em [`docs/contratos/`](docs/contratos/); a fase de eventos (13 a 16, concluída) está detalhada no [PRD](docs/PRD.md#fase-de-eventos).
 
