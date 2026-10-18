@@ -156,7 +156,7 @@ Decidida em 17 de outubro de 2026 (item 6 das funcionalidades) e concluída em 1
 | fatia | conteúdo | situação |
 |---|---|---|
 | 17 — filtros do mural | status, curso, categoria e habilidade no `GET /api/ideas` e no mural, só para quem está logado | feita ([contrato](contratos/fatia-17-filtros-do-mural.md), PR #34) |
-| 18 — busca por texto | busca no título e na descrição, sem diferenciar maiúscula nem acento (`ILIKE` + `unaccent`), no mesmo formulário dos filtros | feita ([contrato](contratos/fatia-18-busca-por-texto.md), PR #?) |
+| 18 — busca por texto | busca no título e na descrição, sem diferenciar maiúscula nem acento (`ILIKE` + `unaccent`), no mesmo formulário dos filtros | feita ([contrato](contratos/fatia-18-busca-por-texto.md), PR #36) |
 
 - Um valor por filtro, e eles se somam. O filtro fica na URL, num formulário GET nativo.
 - O visitante não filtra nem busca: a API ignora os filtros e o `q` dele, para a prévia continuar sendo de 3.
