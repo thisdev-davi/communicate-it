@@ -4,6 +4,8 @@ Terceira fatia da [fase de eventos](../PRD.md#fase-de-eventos). Objetivo único:
 
 Mudou o contrato? Atualiza este arquivo **antes** do código.
 
+> **Atualizado pela [fatia 16](fatia-16-editar-e-apagar-evento.md):** o moderador também edita e apaga qualquer evento.
+
 ## Fora desta fatia (de propósito)
 
 Editar e apagar eventos alheios (fatia 16), editar ideia alheia ou trocar o status dela, tela de administração, dar cargo pela plataforma, segundo nível de cargo (Admin com poder próprio), selo de moderador no perfil, registro de quem apagou o quê.

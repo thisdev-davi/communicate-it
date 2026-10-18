@@ -28,11 +28,12 @@ Em desenvolvimento, construído em fatias verticais (tela → API → banco).
 - [x] Fatia 14: página do evento, "Vou participar" e lista de quem vai
 - [x] Fatia 15: cargo de moderação lido do Discord; o moderador apaga qualquer ideia
 - [x] Fatia 16: o criador e o moderador editam e apagam o evento
-- [x] Fatia 17: filtros do mural por status, curso, categoria e habilidade
-- [x] Fatia 18: busca por texto no mural, sem diferenciar maiúscula nem acento
-- [x] Descoberta (fatias 17 e 18), a última parte do MVP. Comentários saíram do MVP e foram para a fila.
+- [x] Fatia 17: filtros do mural (status, curso, categoria e habilidade), para quem está logado
+- [x] Fatia 18: busca por texto no título e na descrição, sem diferenciar maiúscula nem acento
 
-Cada fatia tem o contrato em [`docs/contratos/`](docs/contratos/); a fase de eventos (13 a 16, concluída) está detalhada no [PRD](docs/PRD.md#fase-de-eventos).
+Comentários nas ideias saíram do MVP e foram para a fila ([IDEIA](docs/IDEIA.md)).
+
+Cada fatia tem o contrato em [`docs/contratos/`](docs/contratos/); as fases de eventos (13 a 16, concluída) e de descoberta (17 e 18) estão detalhadas no [PRD](docs/PRD.md).
 
 ## Stack
 
@@ -46,7 +47,7 @@ Cada fatia tem o contrato em [`docs/contratos/`](docs/contratos/); a fase de eve
 
 ## Rodando localmente
 
-Pré-requisitos: Go, Node.js 20.9+, Docker com Compose e [goose](https://github.com/pressly/goose).
+Pré-requisitos: Go 1.27+, Node.js 20.9+, Docker com Compose e [goose](https://github.com/pressly/goose).
 
 ```sh
 cp .env.example .env              # troque a senha e preencha as DISCORD_* (abaixo)
@@ -55,7 +56,7 @@ set -a; . ./.env; set +a          # exporta as variáveis no shell
 docker compose up -d              # Postgres em localhost:5450
 goose -dir backend/db/migrations postgres "$DATABASE_URL" up
 goose -dir backend/db/migrations postgres "$TEST_DATABASE_URL" up
-docker compose exec -T db psql -U comunica -d comunica < backend/db/seed/dev.sql   # ideia fictícia
+docker compose exec -T db psql -U comunica -d comunica < backend/db/seed/dev.sql   # autor, ideia, evento e sessão de teste fictícios
 
 cd backend
 go test ./...                     # testes
@@ -185,7 +186,7 @@ O seed nunca roda na VPS: lá só entram dados reais, criados pelo próprio site
 ```
 backend/
   cmd/api/           ponto de entrada da API
-  internal/<domínio> handler e queries por domínio (ideas, ...)
+  internal/<domínio> handler e queries por domínio (auth, ideas, events)
   db/migrations/     migrations do goose
   db/queries/        SQL lido pelo sqlc
   db/seed/           dados fictícios, só para uso local

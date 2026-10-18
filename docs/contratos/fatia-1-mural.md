@@ -21,6 +21,8 @@ Login com Discord ([fatia 2](fatia-2-login.md)), habilidades, filtros, busca, pa
 > **Atualizado nos ajustes de UI:** o formulário de postar saiu do mural para a página `/ideias/nova` (só logado com curso), aberta pelo botão "Postar ideia" no topo do mural. Depois de postar, o aluno vai para a página da ideia nova (`/ideias/<id>`).
 >
 > **Atualizado pela [fatia 12](fatia-12-habilidades-da-ideia.md):** o `POST` aceita `skills`, e toda ideia nas respostas ganha `skills`.
+>
+> **Atualizado pela [fatia 17](fatia-17-filtros-do-mural.md):** `GET /api/ideas` aceita os filtros `status`, `course`, `category` e `skill`, só para quem está logado.
 
 ## Banco
 

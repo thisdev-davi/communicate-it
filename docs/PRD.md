@@ -47,8 +47,9 @@ O navegador fala com o front em Next.js, que chama a API em Go; a API acessa o P
 
 Tabelas principais do MVP:
 
-- **users:** o aluno. id, discord_id, nome, foto, curso, habilidades.
-- **ideas:** a ideia postada. id, autor (users), título, descrição, curso, categoria, número de vagas, habilidades procuradas, status (aberta, em andamento, concluída).
+- **users:** o aluno. id, discord_id, nome, foto, curso, habilidades, se é moderador.
+- **sessions:** a sessão de login. Hash do token, usuário e validade (30 dias).
+- **ideas:** a ideia postada. id, autor (users), título, descrição, curso, categoria, número de vagas, habilidades procuradas, status (aberta, em andamento, concluída), data de conclusão.
 - **interests:** quem clicou em "quero participar". Liga um user a uma idea.
 - **Habilidades:** catálogo fixo no código (front-end, back-end, design, dados…), como curso e categoria. Cada aluno guarda as suas numa coluna `skills` (array), e cada ideia guarda as procuradas do mesmo jeito ([fatia 12](contratos/fatia-12-habilidades-da-ideia.md)). Sem tabela de catálogo nem tabelas de junção: a lista é curta e muda pouco ([fatia 11](contratos/fatia-11-habilidades.md)).
 - **events:** o evento. id, autor (users), título, descrição, data e hora de início, local. Presença confirmada também vira uma ligação entre user e event ([fase de eventos](#fase-de-eventos)).
@@ -58,6 +59,7 @@ erDiagram
     users ||--o{ ideas : "posta"
     users ||--o{ interests : "demonstra"
     ideas ||--o{ interests : "recebe"
+    users ||--o{ events : "cria"
     users }o--o{ events : "confirma presença (event_attendees)"
 ```
 
@@ -81,7 +83,7 @@ Um aluno posta várias ideias; cada ideia reúne vários interessados; perfis e 
 
 - Botão "quero participar" em cada ideia.
 - Sem aprovação: o interesse entra direto na lista.
-- O autor vê a lista de interessados numa aba e chama a galera pelo Discord.
+- O autor vê a lista de interessados na página da ideia e chama a galera pelo Discord.
 
 **4. Status da ideia**
 
@@ -122,8 +124,8 @@ Decidida em 16 de outubro de 2026. Quatro fatias, nesta ordem, cada uma com o pr
 - A fase está completa: as quatro fatias foram feitas. O que ficou de fora de propósito está em "Fica para depois", no fim desta seção.
 - Deploy: todo merge na `main` sobe sozinho e roda as migrations. Para a moderação valer em produção, o root precisa preencher `DISCORD_MOD_ROLE_IDS` no `.env` da VPS e copiar o `compose.prod.yaml` novo (README, "Mudou o `compose.prod.yaml`"). Sem isso, a API sobe normalmente, só que sem moderadores.
 - Decidido em 17 de outubro de 2026: comentários nas ideias saíram do MVP. A conversa já vive no Discord, o "quero participar" e o "Chamar no Discord" cobrem a dúvida sobre a ideia, e comentário traria moderação nova. Foram para a fila em `IDEIA.md`.
-- Próximo: a fase de descoberta (filtros e busca, item 6 das funcionalidades), que começa pelo `grill-me` do Davi.
-- Lançamento: a plataforma é aberta para a comunidade no Discord assim que a fatia 16 estiver na `main`, sem esperar a descoberta. O uso real mostra a urgência dos filtros.
+- Depois dela veio a [fase de descoberta](#fase-de-descoberta) (filtros e busca, item 6 das funcionalidades).
+- Lançamento: decidido abrir a plataforma para a comunidade no Discord com a fatia 16 na `main` (já está), sem esperar a descoberta. O uso real mostra a urgência dos filtros.
 
 **Evento**
 

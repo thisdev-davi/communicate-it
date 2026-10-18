@@ -214,7 +214,7 @@ Previsto no artefato, mas sem código ainda. Não é regra até ser implementado
 - Rascunho do formulário de postar em `sessionStorage`, para nada se perder se o aluno sair com texto digitado.
 - @ do Discord do autor no card, só para quem está logado.
 - Modal "Ideia postada" (hoje o envio leva direto à página da ideia).
-- Abas (`Tabs`) para Comentários/Interessados: entram com a fatia que precisar delas.
+- Abas (`Tabs`): entram com a fatia que precisar delas. Os interessados ficam numa seção da página da ideia, e os comentários, que pediriam as abas, saíram do MVP.
 
 ## Onde o artefato diverge (para atualizar no chat do design system)
 

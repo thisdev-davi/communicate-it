@@ -27,7 +27,7 @@ Duas pernas que se apoiam: o mural de ideias e a aba de eventos.
 
 - O aluno posta uma ideia com curso, categoria, descrição, quantas pessoas precisa e habilidades procuradas.
 - Botão "quero participar", sem aprovação — o espírito é conhecer gente nova, então a lista de interessados fica aberta.
-- O autor vê a lista de interessados numa aba e chama a galera pelo Discord.
+- O autor vê a lista de interessados na página da ideia e chama a galera pelo Discord.
 
 **Status da ideia (controlado pelo próprio autor)**
 
