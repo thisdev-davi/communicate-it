@@ -19,6 +19,7 @@ const (
 	maxBodyBytes = 64 << 10 // 64 KB
 	maxSkills    = 5        // habilidades por aluno
 	previewSize  = 3        // quantas ideias o visitante vê (docs/contratos/fatia-3-cadastro.md)
+	maxQuery     = 100      // caracteres da busca do mural (docs/contratos/fatia-18-busca-por-texto.md)
 )
 
 // Listas fixas do contrato (docs/contratos/fatia-1-mural.md). O front mantém a mesma lista com os rótulos.
@@ -201,7 +202,7 @@ func (h *Handler) SetStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 // List devolve o mural (abertas e em andamento) ou, com ?status=done, a vitrine de concluídas,
-// com os filtros da fatia 17. Tudo para quem está logado, só as primeiras para visitante.
+// com os filtros da fatia 17 e a busca da 18. Tudo para quem está logado, só as primeiras para visitante.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.userID(r)
 	if err != nil {
@@ -215,17 +216,18 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		Course:   filter(r, fields, "course", func(v string) bool { return Courses[v] }),
 		Category: filter(r, fields, "category", func(v string) bool { return categories[v] }),
 		Skill:    filter(r, fields, "skill", func(v string) bool { return slices.Contains(Skills, v) }),
+		Search:   search(r, fields),
 	}
 	if len(fields) > 0 {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "validation_failed", Fields: fields})
 		return
 	}
 	if userID == 0 {
-		// Filtrando, o visitante veria mais que a prévia: para ele só a vitrine vale.
+		// Filtrando ou buscando, o visitante veria mais que a prévia: para ele só a vitrine vale.
 		if p.Status != nil && *p.Status != "done" {
 			p.Status = nil
 		}
-		p.Course, p.Category, p.Skill = nil, nil, nil
+		p.Course, p.Category, p.Skill, p.Search = nil, nil, nil, nil
 		p.Max = new(int32(previewSize)) // Go 1.26+: new aceita um valor e devolve o ponteiro para uma cópia dele
 	}
 	rows, err := h.q.ListIdeas(r.Context(), p)
@@ -516,6 +518,27 @@ func filter(r *http.Request, fields map[string]string, name string, valid func(s
 		return nil
 	}
 	return &v
+}
+
+// likeEscaper deixa %, _ e \ literais no ILIKE (o \ é o escape padrão do LIKE no Postgres). O Replacer passa
+// uma vez só pelo texto original: o \ que ele acabou de pôr não é escapado de novo.
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+// search lê o ?q= do GET /api/ideas (docs/contratos/fatia-18-busca-por-texto.md) e devolve o padrão do ILIKE,
+// '%texto%'; vazio depois do trim é "sem busca" (nil). Texto inválido vai para fields.
+func search(r *http.Request, fields map[string]string) *string {
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	switch {
+	case q == "":
+		return nil
+	case !utf8.ValidString(q) || strings.ContainsRune(q, 0): // o Postgres recusa os dois e viraria 500
+		fields["q"] = "contém caractere inválido"
+	case utf8.RuneCountInString(q) > maxQuery:
+		fields["q"] = fmt.Sprintf("deve ter até %d caracteres", maxQuery)
+	default:
+		return new("%" + likeEscaper.Replace(q) + "%")
+	}
+	return nil
 }
 
 // CheckText grava em fields o erro de um texto obrigatório fora do limite de caracteres; exportada para eventos usar as mesmas mensagens.
