@@ -4,6 +4,8 @@ Objetivo único: a ideia concluída sai do mural e ganha um lugar próprio, a vi
 
 Mudou o contrato? Atualiza este arquivo **antes** do código.
 
+> **Atualizado pela [fatia 17](fatia-17-filtros-do-mural.md):** `status` também aceita `open` e `in_progress` (antes `400`), e a vitrine aceita os filtros `course`, `category` e `skill`.
+
 ## Fora desta fatia (de propósito)
 
 Build in public, link do repositório na vitrine, filtros e busca (Descoberta), paginação, página da ideia aberta para visitante, popup de login no card (o card do visitante continua levando a `/login`), "Minhas ideias" (fatia 9).
