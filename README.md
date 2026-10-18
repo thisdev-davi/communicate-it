@@ -29,7 +29,7 @@ Em desenvolvimento, construído em fatias verticais (tela → API → banco).
 - [x] Fatia 15: cargo de moderação lido do Discord; o moderador apaga qualquer ideia
 - [x] Fatia 16: o criador e o moderador editam e apagam o evento
 - [x] Fatia 17: filtros do mural (status, curso, categoria e habilidade), para quem está logado
-- [ ] Fatia 18: busca por texto no título e na descrição (**próxima**)
+- [x] Fatia 18: busca por texto no título e na descrição, sem diferenciar maiúscula nem acento
 
 Comentários nas ideias saíram do MVP e foram para a fila ([IDEIA](docs/IDEIA.md)).
 

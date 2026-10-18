@@ -18,6 +18,8 @@ JOIN users u ON u.id = i.author_id;
 -- name: ListIdeas :many
 -- status NULL é o mural (abertas e em andamento); 'done' é a vitrine; 'open' e 'in_progress' filtram o mural.
 -- Os outros filtros NULL não filtram (docs/contratos/fatia-17-filtros-do-mural.md).
+-- search é o padrão do ILIKE já montado no Go ('%texto%', com % _ \ escapados): acha no título ou na descrição,
+-- sem acento dos dois lados (docs/contratos/fatia-18-busca-por-texto.md).
 -- A vitrine ordena pela conclusão; no mural done_at é sempre NULL, e a ordem cai na data de postagem.
 -- max NULL = sem limite (LIMIT NULL é o mesmo que não ter LIMIT); o visitante recebe só uma prévia.
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
@@ -33,6 +35,9 @@ WHERE CASE WHEN sqlc.narg('status')::text IS NULL THEN i.status <> 'done' ELSE i
   AND i.course = coalesce(sqlc.narg('course'), i.course)
   AND i.category = coalesce(sqlc.narg('category'), i.category)
   AND (sqlc.narg('skill')::text IS NULL OR sqlc.narg('skill') = ANY (i.skills))
+  AND (sqlc.narg('search')::text IS NULL
+       OR unaccent(i.title) ILIKE unaccent(sqlc.narg('search'))
+       OR unaccent(i.description) ILIKE unaccent(sqlc.narg('search')))
 ORDER BY i.done_at DESC NULLS LAST, i.created_at DESC, i.id DESC
 LIMIT sqlc.narg('max');
 

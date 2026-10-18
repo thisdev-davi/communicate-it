@@ -322,8 +322,11 @@ WHERE CASE WHEN $2::text IS NULL THEN i.status <> 'done' ELSE i.status = $2 END
   AND i.course = coalesce($3, i.course)
   AND i.category = coalesce($4, i.category)
   AND ($5::text IS NULL OR $5 = ANY (i.skills))
+  AND ($6::text IS NULL
+       OR unaccent(i.title) ILIKE unaccent($6)
+       OR unaccent(i.description) ILIKE unaccent($6))
 ORDER BY i.done_at DESC NULLS LAST, i.created_at DESC, i.id DESC
-LIMIT $6
+LIMIT $7
 `
 
 type ListIdeasParams struct {
@@ -332,6 +335,7 @@ type ListIdeasParams struct {
 	Course   *string
 	Category *string
 	Skill    *string
+	Search   *string
 	Max      *int32
 }
 
@@ -356,6 +360,8 @@ type ListIdeasRow struct {
 
 // status NULL é o mural (abertas e em andamento); 'done' é a vitrine; 'open' e 'in_progress' filtram o mural.
 // Os outros filtros NULL não filtram (docs/contratos/fatia-17-filtros-do-mural.md).
+// search é o padrão do ILIKE já montado no Go ('%texto%', com % _ \ escapados): acha no título ou na descrição,
+// sem acento dos dois lados (docs/contratos/fatia-18-busca-por-texto.md).
 // A vitrine ordena pela conclusão; no mural done_at é sempre NULL, e a ordem cai na data de postagem.
 // max NULL = sem limite (LIMIT NULL é o mesmo que não ter LIMIT); o visitante recebe só uma prévia.
 func (q *Queries) ListIdeas(ctx context.Context, arg ListIdeasParams) ([]ListIdeasRow, error) {
@@ -365,6 +371,7 @@ func (q *Queries) ListIdeas(ctx context.Context, arg ListIdeasParams) ([]ListIde
 		arg.Course,
 		arg.Category,
 		arg.Skill,
+		arg.Search,
 		arg.Max,
 	)
 	if err != nil {
