@@ -5,7 +5,7 @@ Plataforma para alunos de TI da FAESA acharem parceiros de projeto (mural de ide
 ## Leia antes de qualquer tarefa
 
 - `README.md`, seção **Status** — o que já está feito e qual é a próxima fatia.
-- `docs/PRD.md` — escopo do MVP, modelo de dados, regras de negócio e o que está fora de escopo. É a fonte da verdade do produto. A fase em andamento tem a própria seção (hoje, "Fase de eventos"), com a situação de cada fatia e o próximo passo.
+- `docs/PRD.md` — escopo do MVP, modelo de dados, regras de negócio e o que está fora de escopo. É a fonte da verdade do produto. A fase em andamento tem a própria seção (hoje, "Fase de descoberta"), com a situação de cada fatia e o próximo passo.
 - `docs/IDEIA.md` — visão, fila de fases futuras e a régua de decisão.
 - `docs/contratos/` — contratos de API por fatia. Front e back codam contra o contrato; se precisar mudar, mude o contrato primeiro e avise.
 - `docs/DESIGN.md` — regras de interface (visual, padrões de tela, texto e acessibilidade). Obrigatório em qualquer mudança de tela, componente ou texto da interface.
@@ -24,7 +24,7 @@ Na dúvida sobre escopo, aplique a régua: "sem isso, a dor principal continua s
 ```
 backend/
   cmd/api/main.go      # ponto de entrada: sobe o servidor
-  internal/<domínio>/  # ideas, users, events... handler, serviço e queries juntos por domínio
+  internal/<domínio>/  # auth, ideas, events... handler, serviço e queries juntos por domínio
   db/migrations/       # arquivos do goose
   db/queries/          # SQL que o sqlc lê
   db/seed/             # dados fictícios só para o banco local
@@ -115,7 +115,7 @@ docker compose up -d
 goose -dir backend/db/migrations postgres "$DATABASE_URL" up
 goose -dir backend/db/migrations postgres "$TEST_DATABASE_URL" up
 
-# autor e ideia fictícios, só no banco local
+# autor, ideia, evento e sessão de teste fictícios, só no banco local
 docker compose exec -T db psql -U comunica -d comunica < backend/db/seed/dev.sql
 
 # gerar código do sqlc (via Docker, versão fixa) depois de mudar migrations ou queries
