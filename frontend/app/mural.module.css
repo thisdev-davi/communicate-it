@@ -64,13 +64,17 @@
   min-width: 0;
 }
 
-/* Filtros do mural: quatro selects e os botões numa linha, alinhados pela base. Abaixo de 900px, 2 colunas,
-   também no celular: empilhados, os 4 empurrariam os cards para baixo da dobra. */
+/* Filtros do mural: a busca numa linha inteira; embaixo, quatro selects e os botões, alinhados pela base.
+   Abaixo de 900px, 2 colunas, também no celular: empilhados, os 4 empurrariam os cards para baixo da dobra. */
 .filters {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   align-items: end;
   gap: var(--space-4);
+}
+
+.filters > :first-child {
+  grid-column: 1 / -1;
 }
 
 .filterActions {
