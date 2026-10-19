@@ -63,6 +63,8 @@ func run() error {
 		Addr:              ":" + port,
 		Handler:           routes(a, ideas.NewHandler(pool, a.UserID), events.NewHandler(pool, a.UserID)),
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second, // corpo inteiro; sem isso um cliente lento segura a conexão para sempre
+		IdleTimeout:       60 * time.Second, // keep-alive parado
 	}
 	slog.Info("api no ar", "addr", srv.Addr, "cargos_de_moderacao", len(modRoles))
 	errc := make(chan error, 1)
