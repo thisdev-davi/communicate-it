@@ -79,7 +79,7 @@ O login usa OAuth do Discord e só deixa entrar quem está no servidor da comuni
 
 #### Cargo de moderação
 
-O cargo mora no Discord: quem dá e tira são os admins do servidor. A API relê os cargos a cada login e grava `users.is_moderator`. Tirar o cargo só vale no próximo login da pessoa, até 30 dias depois (a duração da sessão). Na urgência, apague as sessões dela, o que força um novo login:
+O cargo mora no Discord: quem dá e tira são os admins do servidor. A API relê os cargos a cada login e grava `users.is_moderator`. Tirar o cargo só vale no próximo login da pessoa, até 30 dias depois (a duração da sessão). O mesmo vale para quem é removido ou banido do servidor: a API só confere se a pessoa é membro no login, então ela continua com acesso até a sessão expirar. Nos dois casos, para valer na hora, apague as sessões dela, o que força um novo login (e quem saiu do servidor não consegue entrar de novo):
 
 ```sh
 # local; na VPS, o mesmo DELETE dentro do container do banco (docker compose -f compose.prod.yaml exec db psql -U comunica -d comunica)

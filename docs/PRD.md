@@ -146,6 +146,7 @@ Decidida em 16 de outubro de 2026. Quatro fatias, nesta ordem, cada uma com o pr
 
 - `users.is_moderator` é um booleano. No login, a API lê os cargos da pessoa no servidor (a mesma chamada que já confere se ela é membro) e liga o booleano se ela tiver um dos cargos de `DISCORD_MOD_ROLE_IDS` (hoje Admin e Moderação, com o mesmo poder).
 - Quem dá e tira o cargo são os admins, no próprio Discord. O cargo só é relido no login: tirar a moderação vale no próximo login, até 30 dias depois. Na urgência, `DELETE FROM sessions WHERE user_id = …` força o novo login.
+- Quem é removido ou banido do servidor do Discord continua com acesso até a sessão expirar (até 30 dias): ser membro só é conferido no login. O mesmo `DELETE FROM sessions WHERE user_id = …` corta o acesso na hora, e o novo login é recusado.
 - O moderador edita e apaga qualquer evento e apaga qualquer ideia (não edita ideia alheia nem troca o status dela).
 - O front mostra os botões pelo `is_moderator` do `/api/me`; quem decide de verdade é a API.
 
