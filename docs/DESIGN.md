@@ -118,7 +118,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 
 - **`EventCard`**, na mesma grade do mural: à esquerda, o bloco de data (dia 28px / 800 e mês curto 11px / 700 em caixa alta, `on-primary` sobre `primary`, 64px de largura, `radius-sm`) com o losango `faesa-amber` saindo da borda direita.
 - À direita: título em até 2 linhas; a hora ("sex, 19:00", com `clock`), o local (`map-pin`) e os confirmados ("2 confirmados", com `users`), em `ink` 13px com o ícone em `ink-muted`; a descrição em até 3 linhas; e, no rodapé (sempre embaixo, com a divisória `line`), a foto e o nome do organizador, que levam ao perfil dele.
-- Data e hora sempre no horário de Brasília (`timeZone: "America/Sao_Paulo"`). O bloco de data é `aria-hidden`: o leitor de tela ouve a data por extenso na linha da hora ("20 de outubro, ter, 19:00"), e "Organizado por" antes do nome.
+- Data e hora sempre no horário de Brasília (`timeZone: "America/Sao_Paulo"`). O ano só aparece quando não é o ano corrente (em Brasília): uma linha a mais no bloco de data, com o estilo do mês, e "de 2027" na data por extenso. O bloco de data é `aria-hidden`: o leitor de tela ouve a data por extenso na linha da hora ("20 de outubro, ter, 19:00"), e "Organizado por" antes do nome.
 - **O card não tem ação e tem dois destinos**, como o `IdeaCard`: o título é o link esticado para a página do evento, e o organizador é o link para o perfil, por cima do `::after`.
 - Quem confirmou presença vê a borda `accent` e o selo "Você vai" (`accent-soft`, `circle-check`) à direita do organizador; se não couber, o selo desce.
 - Na página do evento, o card vem inteiro (`full`): título `h1` de 24px, descrição em 15px `ink`, nada cortado e sem link no título. O botão de presença ocupa o lugar do selo.
@@ -174,6 +174,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
 - **Vazio:** `StatePanel` com título e uma frase que convida a agir ("Nenhuma ideia ainda. Que tal postar a primeira?").
 - **Erro de carregamento:** `StatePanel tone="error"`, que diz o que fazer ("Atualize a página em alguns instantes") e nunca mostra detalhe técnico.
 - **Erro de ação:** a mensagem fica perto do que falhou (`Notice` no topo do formulário, texto embaixo do botão) e diz o que fazer.
+- **Sessão expirada (`401`) numa ação:** botões e formulários levam para `/login`, sem mensagem de erro (tentar de novo não resolveria).
 - **Ação em andamento:** o controle fica desabilitado e o texto muda ("Enviando…", "Salvando…", "Apagando…"). Depois de gravar, o front pede a página de novo ao servidor (`router.refresh()` ou navegação), em vez de inventar o estado no cliente.
 
 ### Formulários
