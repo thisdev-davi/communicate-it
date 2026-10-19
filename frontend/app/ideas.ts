@@ -75,6 +75,7 @@ export const CATEGORIES: Record<string, string> = {
 
 // Catálogo de habilidades da fatia 11 (docs/contratos/fatia-11-habilidades.md), na ordem da API.
 export const SKILLS: Record<string, string> = {
+  competitive_programming: "Maratona de Programação",
   frontend: "Front-end",
   backend: "Back-end",
   mobile: "Mobile",
