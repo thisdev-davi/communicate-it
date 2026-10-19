@@ -63,6 +63,10 @@ export function EventForm({ event }: { event?: CommunityEvent }) {
         router.push(`/eventos/${saved.id}`); // o aluno vê o evento como os outros vão ver; o formulário fica travado até a troca de página
         return;
       }
+      if (res.status === 401) {
+        router.push("/login"); // a sessão expirou: o formulário fica travado até a troca de página
+        return;
+      }
       const body: ApiError = await res.json();
       setFields(body.fields ?? {});
       setMessage(body.fields ? "Corrija os campos indicados." : (ERRORS[body.error] ?? `Não foi possível ${verb} o evento. Tente de novo.`));
