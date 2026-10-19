@@ -19,6 +19,7 @@ Habilidades procuradas na ideia (próxima fatia), filtro por habilidade (Descobe
 
 | valor | rótulo |
 |---|---|
+| `competitive_programming` | Maratona de Programação |
 | `frontend` | Front-end |
 | `backend` | Back-end |
 | `mobile` | Mobile |
