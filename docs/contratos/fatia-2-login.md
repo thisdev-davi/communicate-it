@@ -24,12 +24,12 @@ sequenceDiagram
     participant A as API Go (via /api do Next)
     participant D as Discord
     N->>A: GET /api/auth/discord
-    A-->>N: 302 para o Discord + cookie oauth_state
+    A-->>N: 302 para o Discord + cookie __Host-oauth_state
     N->>D: autoriza (escopos identify, guilds.members.read)
     D-->>N: 302 para /api/auth/discord/callback?code&state
     N->>A: GET /api/auth/discord/callback
     A->>D: troca o code, lê /users/@me e o membro do servidor
-    A-->>N: 302 para / + cookie session
+    A-->>N: 302 para / + cookie __Host-session
 ```
 
 O navegador sempre fala com o domínio do front; o Next (local) e o Caddy (produção) repassam `/api/*` para o Go. Assim os cookies ficam no domínio do front, sem CORS.
@@ -53,16 +53,16 @@ Tabela `users`: sem mudança de colunas. A cada login, `name` e `avatar_url` sã
 
 | cookie | conteúdo | atributos |
 |---|---|---|
-| `oauth_state` | texto aleatório | `HttpOnly`, `SameSite=Lax`, `Path=/api/auth`, 10 minutos; apagado no callback |
-| `session` | token aleatório | `HttpOnly`, `SameSite=Lax`, `Path=/`, 30 dias |
+| `__Host-oauth_state` | texto aleatório | `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, 10 minutos; apagado no callback |
+| `__Host-session` | token aleatório | `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, 30 dias |
 
-Os dois ganham `Secure` quando `DISCORD_REDIRECT_URL` começa com `https://` (produção). `SameSite=Lax` impede que outro site faça `POST` levando a sessão (proteção contra CSRF).
+Nenhum dos dois tem `Domain`. O prefixo `__Host-` faz o navegador exigir `Secure`, `Path=/` e nenhum `Domain`: como o `sslip.io` não está na Public Suffix List, sem o prefixo outro `*.sslip.io` poderia gravar um cookie `Domain=sslip.io` com o mesmo nome por cima do nosso. Os atributos são os mesmos em dev e produção; o navegador aceita `Secure` em `http://localhost`. `SameSite=Lax` impede que outro site faça `POST` levando a sessão (proteção contra CSRF).
 
 ## Endpoints
 
 ### `GET /api/auth/discord` — começa o login
 
-Responde `302` para a tela de autorização do Discord e grava `oauth_state`.
+Responde `302` para a tela de autorização do Discord e grava `__Host-oauth_state`.
 
 ### `GET /api/auth/discord/callback` — volta do Discord
 
@@ -70,7 +70,7 @@ Sempre responde `302`:
 
 | situação | destino |
 |---|---|
-| deu certo | `/` (grava `session`); `/cadastro` se o usuário ainda não tem curso ([fatia 3](fatia-3-cadastro.md)) |
+| deu certo | `/` (grava `__Host-session`); `/cadastro` se o usuário ainda não tem curso ([fatia 3](fatia-3-cadastro.md)) |
 | aluno cancelou no Discord (`?error=...`) | `/login?erro=cancelado` |
 | não é membro do servidor | `/login?erro=fora_do_servidor` |
 | `state` ausente ou diferente do cookie, ou qualquer falha (Discord fora, banco) | `/login?erro=falhou` |

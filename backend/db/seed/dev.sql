@@ -5,7 +5,7 @@ WITH u AS (INSERT INTO users (name, course) VALUES ('Usuário de Teste', 'cc') R
 INSERT INTO ideas (author_id, title, description, course, category, slots)
 SELECT id, 'App de carona para o campus', 'Ideia fictícia de exemplo, criada pelo seed local.', 'cc', 'mobile', 3 FROM u;
 
--- Sessão fixa do "Usuário de Teste", para o Playwright CLI entrar logado no front local (cookie session=sessao-local-de-teste).
+-- Sessão fixa do "Usuário de Teste", para o Playwright CLI entrar logado no front local (cookie __Host-session=sessao-local-de-teste).
 -- O token é público (está no repositório) e só vale neste banco: o seed nunca roda na VPS.
 INSERT INTO sessions (token_hash, user_id, expires_at)
 SELECT sha256(convert_to('sessao-local-de-teste', 'UTF8')), id, now() + interval '1 year'

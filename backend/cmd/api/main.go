@@ -63,6 +63,8 @@ func run() error {
 		Addr:              ":" + port,
 		Handler:           routes(a, ideas.NewHandler(pool, a.UserID), events.NewHandler(pool, a.UserID)),
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second, // corpo inteiro; sem isso um cliente lento segura a conexão para sempre
+		IdleTimeout:       60 * time.Second, // keep-alive parado
 	}
 	slog.Info("api no ar", "addr", srv.Addr, "cargos_de_moderacao", len(modRoles))
 	errc := make(chan error, 1)
@@ -84,6 +86,7 @@ func run() error {
 // que o navegador marca como vindo de outro site (Sec-Fetch-Site) leva 403 antes de chegar no handler.
 // O SameSite=Lax do cookie não basta aqui: o sslip.io não está na Public Suffix List, então para o
 // navegador qualquer *.sslip.io é "o mesmo site" e mandaria o cookie junto.
+// Toda resposta leva nosniff: o navegador não tenta adivinhar outro tipo além do Content-Type.
 func routes(a *auth.Handler, h *ideas.Handler, ev *events.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/auth/discord", a.Login)
@@ -114,5 +117,9 @@ func routes(a *auth.Handler, h *ideas.Handler, ev *events.Handler) http.Handler 
 		w.WriteHeader(http.StatusForbidden)
 		io.WriteString(w, `{"error":"cross_origin"}`+"\n")
 	}))
-	return p.Handler(mux)
+	api := p.Handler(mux)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		api.ServeHTTP(w, r)
+	})
 }
