@@ -173,18 +173,6 @@ func (q *Queries) GetEventAuthor(ctx context.Context, id int64) (int64, error) {
 	return author_id, err
 }
 
-const isModerator = `-- name: IsModerator :one
-SELECT is_moderator FROM users WHERE id = $1
-`
-
-// O moderador edita e apaga qualquer evento (docs/contratos/fatia-16-editar-e-apagar-evento.md).
-func (q *Queries) IsModerator(ctx context.Context, id int64) (bool, error) {
-	row := q.db.QueryRow(ctx, isModerator, id)
-	var is_moderator bool
-	err := row.Scan(&is_moderator)
-	return is_moderator, err
-}
-
 const isUpcoming = `-- name: IsUpcoming :one
 SELECT starts_at >= date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo'
 FROM events WHERE id = $1

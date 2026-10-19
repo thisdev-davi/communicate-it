@@ -18,12 +18,13 @@ const maxBodyBytes = 64 << 10 // 64 KB
 
 type Handler struct {
 	q *Queries
-	// userID diz quem está logado (0 = visitante). Recebe uma função, não o pacote auth: os testes trocam por um stub.
-	userID func(*http.Request) (int64, error)
+	// viewer diz quem está logado (0 = visitante) e se é moderador, os dois lidos da mesma sessão.
+	// Recebe uma função, não o pacote auth: os testes trocam por um stub.
+	viewer func(*http.Request) (userID int64, moderator bool, err error)
 }
 
-func NewHandler(db DBTX, userID func(*http.Request) (int64, error)) *Handler {
-	return &Handler{q: New(db), userID: userID}
+func NewHandler(db DBTX, viewer func(*http.Request) (userID int64, moderator bool, err error)) *Handler {
+	return &Handler{q: New(db), viewer: viewer}
 }
 
 // Corpo do POST e do PUT: criar e editar trocam os mesmos campos.
@@ -73,7 +74,7 @@ type errorResponse struct {
 
 // Create cria um evento; qualquer aluno logado, sem aprovação.
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
-	authorID, ok := h.loggedIn(w, r)
+	authorID, _, ok := h.loggedIn(w, r)
 	if !ok {
 		return
 	}
@@ -101,7 +102,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List é a agenda: os eventos de hoje em diante, do mais próximo. Para todo mundo, visitante incluído.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	viewer, err := h.userID(r)
+	viewer, _, err := h.viewer(r)
 	if err != nil {
 		internalError(w, "session", err)
 		return
@@ -163,7 +164,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 // organizerOf devolve quem chama e o id do evento da rota quando quem chama é o criador dele ou um moderador.
 // Senão já responde 401 (sem sessão), 404 (evento não existe) ou 403 (nem criador nem moderador) e devolve ok = false.
 func (h *Handler) organizerOf(w http.ResponseWriter, r *http.Request) (userID, id int64, ok bool) {
-	userID, ok = h.loggedIn(w, r)
+	userID, moderator, ok := h.loggedIn(w, r)
 	if !ok {
 		return 0, 0, false
 	}
@@ -181,16 +182,7 @@ func (h *Handler) organizerOf(w http.ResponseWriter, r *http.Request) (userID, i
 		internalError(w, "get event author", err)
 		return 0, 0, false
 	}
-	if authorID == userID {
-		return userID, id, true
-	}
-	// Só quem não é o criador custa a segunda consulta.
-	mod, err := h.q.IsModerator(r.Context(), userID)
-	if err != nil {
-		internalError(w, "is moderator", err)
-		return 0, 0, false
-	}
-	if !mod {
+	if authorID != userID && !moderator {
 		writeJSON(w, http.StatusForbidden, errorResponse{Error: "not_author"})
 		return 0, 0, false
 	}
@@ -199,7 +191,7 @@ func (h *Handler) organizerOf(w http.ResponseWriter, r *http.Request) (userID, i
 
 // Get devolve um evento, para todo mundo; também os que já passaram. Quem está logado recebe a lista de quem vai.
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
-	viewer, err := h.userID(r)
+	viewer, _, err := h.viewer(r)
 	if err != nil {
 		internalError(w, "session", err)
 		return
@@ -235,7 +227,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 
 // PutAttendance é o "vou": sem aprovação nem limite. Repetir não muda nada. Só evento da agenda (de hoje em diante).
 func (h *Handler) PutAttendance(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.loggedIn(w, r)
+	userID, _, ok := h.loggedIn(w, r)
 	if !ok {
 		return
 	}
@@ -274,7 +266,7 @@ func (h *Handler) PutAttendance(w http.ResponseWriter, r *http.Request) {
 // DeleteAttendance é o "desistir", até em evento passado. Responde 204 mesmo sem presença ou sem evento:
 // o resultado é o mesmo, a pessoa não está na lista.
 func (h *Handler) DeleteAttendance(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.loggedIn(w, r)
+	userID, _, ok := h.loggedIn(w, r)
 	if !ok {
 		return
 	}
@@ -287,18 +279,18 @@ func (h *Handler) DeleteAttendance(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// loggedIn devolve quem está logado; sem sessão já responde 401 (ou 500 se a sessão falhou) e devolve ok = false.
-func (h *Handler) loggedIn(w http.ResponseWriter, r *http.Request) (userID int64, ok bool) {
-	userID, err := h.userID(r)
+// loggedIn devolve quem está logado e se é moderador; sem sessão já responde 401 (ou 500 se a sessão falhou) e devolve ok = false.
+func (h *Handler) loggedIn(w http.ResponseWriter, r *http.Request) (userID int64, moderator, ok bool) {
+	userID, moderator, err := h.viewer(r)
 	if err != nil {
 		internalError(w, "session", err)
-		return 0, false
+		return 0, false, false
 	}
 	if userID == 0 {
 		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "unauthenticated"})
-		return 0, false
+		return 0, false, false
 	}
-	return userID, true
+	return userID, moderator, true
 }
 
 // pathID lê o {id} da rota. Id que não é inteiro positivo é só um evento que não existe: quem chama responde 404 sem ir ao banco.

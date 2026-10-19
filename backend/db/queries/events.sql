@@ -86,7 +86,3 @@ DELETE FROM events WHERE id = $1;
 
 -- name: GetEventAuthor :one
 SELECT author_id FROM events WHERE id = $1;
-
--- name: IsModerator :one
--- O moderador edita e apaga qualquer evento (docs/contratos/fatia-16-editar-e-apagar-evento.md).
-SELECT is_moderator FROM users WHERE id = $1;

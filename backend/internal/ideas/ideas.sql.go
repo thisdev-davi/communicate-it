@@ -231,18 +231,6 @@ func (q *Queries) GetUser(ctx context.Context, id int64) (GetUserRow, error) {
 	return i, err
 }
 
-const isModerator = `-- name: IsModerator :one
-SELECT is_moderator FROM users WHERE id = $1
-`
-
-// O moderador apaga qualquer ideia (docs/contratos/fatia-15-cargo-de-moderacao.md).
-func (q *Queries) IsModerator(ctx context.Context, id int64) (bool, error) {
-	row := q.db.QueryRow(ctx, isModerator, id)
-	var is_moderator bool
-	err := row.Scan(&is_moderator)
-	return is_moderator, err
-}
-
 const listAuthorIdeas = `-- name: ListAuthorIdeas :many
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
        u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar_url,

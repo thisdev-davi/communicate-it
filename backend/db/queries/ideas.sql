@@ -59,10 +59,6 @@ WHERE i.id = sqlc.arg('id');
 -- O status vem junto: quando o AddInterest não grava, é ele que diz o porquê.
 SELECT author_id, status FROM ideas WHERE id = $1;
 
--- name: IsModerator :one
--- O moderador apaga qualquer ideia (docs/contratos/fatia-15-cargo-de-moderacao.md).
-SELECT is_moderator FROM users WHERE id = $1;
-
 -- name: AddInterest :execrows
 -- Confere e grava na mesma instrução: só ideia aberta, e nunca o próprio autor. O FOR SHARE segura a linha da ideia
 -- até o fim: se o autor troca o status ou apaga a ideia ao mesmo tempo, um espera o outro, e o insert reconfere a linha nova.
