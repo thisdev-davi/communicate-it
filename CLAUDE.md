@@ -145,7 +145,7 @@ O agente testa as telas com o [Playwright CLI](https://github.com/microsoft/play
 ```sh
 # API e front rodando, banco local com o seed (que cria a sessão fixa do "Usuário de Teste")
 npx -y @playwright/cli@0.1.22 open http://localhost:3000
-npx -y @playwright/cli@0.1.22 cookie-set session sessao-local-de-teste --domain=localhost --path=/   # entra logado
+npx -y @playwright/cli@0.1.22 cookie-set __Host-session sessao-local-de-teste --domain=localhost --path=/ --secure --httpOnly   # entra logado
 npx -y @playwright/cli@0.1.22 goto http://localhost:3000/ideias/1
 npx -y @playwright/cli@0.1.22 snapshot                      # árvore da página com as refs (e12...) para clicar
 npx -y @playwright/cli@0.1.22 click e12
