@@ -43,6 +43,9 @@ func TestRoutesBlockCrossOriginWrites(t *testing.T) {
 			if got := rec.Code == http.StatusForbidden; got != tc.wantForbidden {
 				t.Errorf("status = %d, quer 403: %v", rec.Code, tc.wantForbidden)
 			}
+			if got := rec.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+				t.Errorf("X-Content-Type-Options = %q, quer nosniff", got)
+			}
 			if tc.wantForbidden && rec.Body.String() != `{"error":"cross_origin"}`+"\n" {
 				t.Errorf("corpo = %q, quer o erro cross_origin do contrato", rec.Body)
 			}
