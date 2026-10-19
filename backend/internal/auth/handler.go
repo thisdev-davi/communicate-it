@@ -24,8 +24,10 @@ import (
 )
 
 const (
-	sessionCookie = "session"
-	stateCookie   = "oauth_state"
+	// __Host-: o navegador só aceita o cookie com Secure, Path=/ e sem Domain. Assim outro *.sslip.io
+	// (fora da Public Suffix List) não consegue gravar um cookie com o mesmo nome por cima do nosso.
+	sessionCookie = "__Host-session"
+	stateCookie   = "__Host-oauth_state"
 	sessionTTL    = 30 * 24 * time.Hour
 	stateTTL      = 10 * time.Minute
 	maxBodyBytes  = 64 << 10 // 64 KB
@@ -40,7 +42,6 @@ type Handler struct {
 	discordAPI string // base da API REST do Discord; os testes apontam para um servidor falso
 	guildID    string
 	modRoles   []string // ids dos cargos do servidor que dão moderação (DISCORD_MOD_ROLE_IDS)
-	secure     bool     // cookies só por HTTPS: ligado quando a Redirect URL é https (produção)
 }
 
 func NewHandler(db DBTX, clientID, clientSecret, redirectURL, guildID string, modRoles []string) *Handler {
@@ -56,20 +57,19 @@ func NewHandler(db DBTX, clientID, clientSecret, redirectURL, guildID string, mo
 		discordAPI: "https://discord.com/api/v10",
 		guildID:    guildID,
 		modRoles:   modRoles,
-		secure:     strings.HasPrefix(redirectURL, "https://"),
 	}
 }
 
 // Login manda o navegador para o Discord. O state aleatório volta no callback e prova que o login começou aqui (anti-CSRF).
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	state := rand.Text()
-	h.setCookie(w, stateCookie, state, "/api/auth", int(stateTTL.Seconds()))
+	setCookie(w, stateCookie, state, int(stateTTL.Seconds()))
 	http.Redirect(w, r, h.oauth.AuthCodeURL(state), http.StatusFound)
 }
 
 // Callback recebe a volta do Discord e sempre responde com redirect: para / (ou /cadastro, se falta o curso) se deu certo, para /login?erro=... se não.
 func (h *Handler) Callback(w http.ResponseWriter, r *http.Request) {
-	h.setCookie(w, stateCookie, "", "/api/auth", -1) // o state vale uma vez só
+	setCookie(w, stateCookie, "", -1) // o state vale uma vez só
 	q := r.URL.Query()
 	if q.Get("error") != "" {
 		toLogin(w, r, "cancelado")
@@ -170,7 +170,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	h.setCookie(w, sessionCookie, "", "/", -1)
+	setCookie(w, sessionCookie, "", -1)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -251,19 +251,19 @@ func (h *Handler) startSession(ctx context.Context, w http.ResponseWriter, userI
 	if err != nil {
 		return fmt.Errorf("criar sessão: %w", err)
 	}
-	h.setCookie(w, sessionCookie, token, "/", int(sessionTTL.Seconds()))
+	setCookie(w, sessionCookie, token, int(sessionTTL.Seconds()))
 	return nil
 }
 
 // maxAge em segundos; -1 apaga o cookie.
-func (h *Handler) setCookie(w http.ResponseWriter, name, value, path string, maxAge int) {
+func setCookie(w http.ResponseWriter, name, value string, maxAge int) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    value,
-		Path:     path,
+		Path:     "/",
 		MaxAge:   maxAge,
 		HttpOnly: true, // JavaScript da página não lê: um XSS não rouba a sessão
-		Secure:   h.secure,
+		Secure:   true, // exigido pelo __Host-; o navegador aceita também em http://localhost
 		SameSite: http.SameSiteLaxMode, // outro site não consegue fazer POST levando o cookie
 	})
 }
