@@ -27,7 +27,10 @@ async function LoginBox({ searchParams }: Pick<PageProps<"/login">, "searchParam
           {erro === "fora_do_servidor" && invite && (
             <>
               {" "}
-              <a href={invite}>Entre no servidor da comunidade</a> e depois tente de novo.
+              <a href={invite} target="_blank" rel="noopener noreferrer">
+                Entre no servidor da comunidade<span className="sr-only"> (abre em nova aba)</span>
+              </a>{" "}
+              e depois tente de novo.
             </>
           )}
         </Notice>
