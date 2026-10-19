@@ -133,6 +133,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		Slots:       int32(req.Slots), // seguro: validate garante 1–20
 		Skills:      req.Skills,
 	})
+	if errors.Is(err, pgx.ErrNoRows) { // o insert só grava para quem já escolheu o curso
+		writeJSON(w, http.StatusForbidden, errorResponse{Error: "course_required"})
+		return
+	}
 	if err != nil {
 		internalError(w, "create idea", err)
 		return
@@ -347,7 +351,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 // PutInterest é o "quero participar": sem aprovação, a pessoa entra direto na lista. Repetir não muda nada.
-// Só ideia aberta recebe interessados.
+// Só ideia aberta recebe interessados, e o autor não entra na própria.
 func (h *Handler) PutInterest(w http.ResponseWriter, r *http.Request) {
 	userID, ok := h.loggedIn(w, r)
 	if !ok {
@@ -358,6 +362,17 @@ func (h *Handler) PutInterest(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
 		return
 	}
+	// As regras moram no próprio insert: conferir antes e gravar depois deixaria o autor trancar a ideia no meio.
+	added, err := h.q.AddInterest(r.Context(), AddInterestParams{IdeaID: id, UserID: userID})
+	if err != nil {
+		internalError(w, "add interest", err)
+		return
+	}
+	if added == 1 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	// Não gravou: a consulta abaixo só escolhe a resposta.
 	idea, err := h.q.GetIdeaAuthor(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
@@ -375,11 +390,7 @@ func (h *Handler) PutInterest(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, errorResponse{Error: "closed"})
 		return
 	}
-	if err := h.q.AddInterest(r.Context(), AddInterestParams{IdeaID: id, UserID: userID}); err != nil {
-		internalError(w, "add interest", err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent) // aberta e de outro autor: a pessoa já estava na lista
 }
 
 // DeleteInterest é o "desistir". Responde 204 mesmo sem interesse ou sem ideia: o resultado é o mesmo, a pessoa não está na lista.

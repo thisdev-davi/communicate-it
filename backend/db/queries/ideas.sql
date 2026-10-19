@@ -4,9 +4,11 @@
 
 -- name: CreateIdea :one
 -- Ideia recém-criada ainda não tem interessados: as duas colunas saem fixas.
+-- Só grava se o autor já escolheu o curso; sem curso não volta linha (pgx.ErrNoRows), e o handler responde 403.
 WITH i AS (
     INSERT INTO ideas (author_id, title, description, course, category, slots, skills)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    SELECT $1, $2, $3, $4, $5, $6, $7
+    FROM users WHERE id = $1 AND course IS NOT NULL
     RETURNING *
 )
 SELECT i.id, i.title, i.description, i.course, i.category, i.slots, i.status, i.created_at, i.done_at, i.skills,
@@ -54,16 +56,22 @@ JOIN users u ON u.id = i.author_id
 WHERE i.id = sqlc.arg('id');
 
 -- name: GetIdeaAuthor :one
--- O status vem junto: o "quero participar" só entra em ideia aberta.
+-- O status vem junto: quando o AddInterest não grava, é ele que diz o porquê.
 SELECT author_id, status FROM ideas WHERE id = $1;
 
 -- name: IsModerator :one
 -- O moderador apaga qualquer ideia (docs/contratos/fatia-15-cargo-de-moderacao.md).
 SELECT is_moderator FROM users WHERE id = $1;
 
--- name: AddInterest :exec
+-- name: AddInterest :execrows
+-- Confere e grava na mesma instrução: só ideia aberta, e nunca o próprio autor. O FOR SHARE segura a linha da ideia
+-- até o fim: se o autor troca o status ou apaga a ideia ao mesmo tempo, um espera o outro, e o insert reconfere a linha nova.
 -- Repetir não dá erro nem duplica: a chave (idea_id, user_id) já existe e o insert vira nada.
-INSERT INTO interests (idea_id, user_id) VALUES ($1, $2)
+-- 0 linhas = não gravou (não existe, não está aberta, é do autor ou já estava na lista); o handler descobre qual.
+INSERT INTO interests (idea_id, user_id)
+SELECT id, sqlc.arg('user_id') FROM ideas
+WHERE id = sqlc.arg('idea_id') AND status = 'open' AND author_id <> sqlc.arg('user_id')
+FOR SHARE
 ON CONFLICT DO NOTHING;
 
 -- name: RemoveInterest :exec

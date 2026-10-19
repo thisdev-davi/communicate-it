@@ -12,6 +12,7 @@ const MONTH = fmt({ month: "short" }); // "out."
 const WEEKDAY = fmt({ weekday: "short" }); // "ter."
 const TIME = fmt({ hour: "2-digit", minute: "2-digit" }); // "19:00"
 const FULL = fmt({ day: "numeric", month: "long" }); // "20 de outubro", para o leitor de tela
+const YEAR = fmt({ year: "numeric" }); // só aparece quando não é o ano corrente em Brasília
 
 // EventCard do design system: bloco de data em `primary` com o losango âmbar, título, hora, local, descrição e organizador.
 // Na agenda, como o IdeaCard, o card não tem ação e tem dois destinos: o título (link esticado) leva à página do evento
@@ -21,12 +22,15 @@ const FULL = fmt({ day: "numeric", month: "long" }); // "20 de outubro", para o 
 export function EventCard({ event, full = false, action }: { event: CommunityEvent; full?: boolean; action?: ReactNode }) {
   const start = new Date(event.starts_at);
   const Title = full ? "h1" : "h3";
+  const year = YEAR.format(start);
+  const otherYear = year !== YEAR.format(new Date());
   return (
     <article className={["card", styles.card, full && styles.full, event.going && styles.going].filter(Boolean).join(" ")}>
       {/* O leitor de tela ouve a data por extenso na linha da hora; o bloco é só visual. */}
       <div className={styles.date} aria-hidden="true">
         <span className={styles.day}>{DAY.format(start)}</span>
         <span className={styles.month}>{MONTH.format(start).replace(".", "")}</span>
+        {otherYear && <span className={styles.month}>{year}</span>}
       </div>
       <div className={styles.body}>
         <Title className={styles.title}>
@@ -42,7 +46,10 @@ export function EventCard({ event, full = false, action }: { event: CommunityEve
           <li>
             <Icon name="clock" size={14} />
             <time dateTime={event.starts_at}>
-              <span className="sr-only">{FULL.format(start)}, </span>
+              <span className="sr-only">
+                {FULL.format(start)}
+                {otherYear && ` de ${year}`},{" "}
+              </span>
               {WEEKDAY.format(start).replace(".", "")}, {TIME.format(start)}
             </time>
           </li>

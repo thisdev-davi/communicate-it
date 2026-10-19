@@ -7,6 +7,8 @@ Mudou o contrato? Atualiza este arquivo **antes** do código.
 > **Atualizado pela [fatia 14](fatia-14-presenca-em-eventos.md):** todo evento ganha `attendee_count` e `going`; o card leva à página do evento (`/eventos/<id>`), e criar evento vai para a página dele.
 >
 > **Atualizado pela [fatia 16](fatia-16-editar-e-apagar-evento.md):** o criador e o moderador editam (`PUT /api/events/{id}`) e apagam (`DELETE /api/events/{id}`) o evento.
+>
+> **Atualizado pelo T2 (`fix/regras-e-ux`):** só quem já escolheu o curso cria evento; sem curso, a API responde `403 course_required`. Antes só o front barrava.
 
 ## Fora desta fatia (de propósito)
 
@@ -63,6 +65,7 @@ Erros:
 
 - `400` — `{ "error": "invalid_json" }` ou `{ "error": "validation_failed", "fields": { "starts_at": "deve ser no futuro" } }`.
 - `401` — sem sessão válida: `{ "error": "unauthenticated" }`.
+- `403` — o aluno ainda não escolheu o curso: `{ "error": "course_required" }`. Conferido na gravação, depois da validação do corpo.
 - `413` — corpo acima de 64 KB: `{ "error": "body_too_large" }`.
 - `500` — `{ "error": "internal" }`.
 

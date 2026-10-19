@@ -160,7 +160,7 @@ func TestCreateAndList(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	var authorID int64
-	if err := pool.QueryRow(ctx, "INSERT INTO users (name) VALUES ('Organizador de Teste') RETURNING id").Scan(&authorID); err != nil {
+	if err := pool.QueryRow(ctx, "INSERT INTO users (name, course) VALUES ('Organizador de Teste', 'cc') RETURNING id").Scan(&authorID); err != nil {
 		t.Fatal(err)
 	}
 	h := NewHandler(pool, loggedAs(authorID))
@@ -199,12 +199,32 @@ func TestCreateAndList(t *testing.T) {
 	}
 }
 
+// Só quem já escolheu o curso cria evento: sem curso é 403 course_required; depois de escolher, 201.
+func TestCreateRequiresCourse(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+	var userID int64
+	if err := pool.QueryRow(ctx, "INSERT INTO users (name) VALUES ('Aluno Sem Curso') RETURNING id").Scan(&userID); err != nil {
+		t.Fatal(err)
+	}
+	h := NewHandler(pool, loggedAs(userID))
+	if rec := do(t, h.Create, http.MethodPost, body(future(time.Hour))); rec.Code != 403 || decode[errorResponse](t, rec).Error != "course_required" {
+		t.Errorf("sem curso: %d (%s), quer 403 course_required", rec.Code, rec.Body)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE users SET course = 'ads' WHERE id = $1", userID); err != nil {
+		t.Fatal(err)
+	}
+	if rec := do(t, h.Create, http.MethodPost, body(future(time.Hour))); rec.Code != 201 {
+		t.Errorf("com curso: %d (%s), quer 201", rec.Code, rec.Body)
+	}
+}
+
 // Fluxo do "vou" contra Postgres real: confirmar, contar, ver a lista, desistir e o evento passado.
 func TestAttendance(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	var authorID, guestID int64
-	if err := pool.QueryRow(ctx, "INSERT INTO users (name) VALUES ('Organizador de Teste'), ('Aluna de Teste') RETURNING id").Scan(&authorID); err != nil {
+	if err := pool.QueryRow(ctx, "INSERT INTO users (name, course) VALUES ('Organizador de Teste', 'cc'), ('Aluna de Teste', 'cc') RETURNING id").Scan(&authorID); err != nil {
 		t.Fatal(err)
 	}
 	guestID = authorID + 1 // RESTART IDENTITY no testDB: os ids saem em sequência
@@ -282,7 +302,7 @@ func TestUpdateAndDelete(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	var authorID int64
-	if err := pool.QueryRow(ctx, "INSERT INTO users (name) VALUES ('Organizador de Teste'), ('Outro Aluno'), ('Moderadora de Teste') RETURNING id").Scan(&authorID); err != nil {
+	if err := pool.QueryRow(ctx, "INSERT INTO users (name, course) VALUES ('Organizador de Teste', 'cc'), ('Outro Aluno', 'cc'), ('Moderadora de Teste', 'cc') RETURNING id").Scan(&authorID); err != nil {
 		t.Fatal(err)
 	}
 	otherID, modID := authorID+1, authorID+2 // RESTART IDENTITY no testDB: os ids saem em sequência

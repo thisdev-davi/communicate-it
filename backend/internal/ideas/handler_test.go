@@ -212,7 +212,7 @@ func TestCreateListAndGet(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	var authorID int64
-	if err := pool.QueryRow(ctx, "INSERT INTO users (name, avatar_url) VALUES ('Autor de Teste', 'https://cdn.discordapp.com/avatars/1/a.png') RETURNING id").Scan(&authorID); err != nil {
+	if err := pool.QueryRow(ctx, "INSERT INTO users (name, course, avatar_url) VALUES ('Autor de Teste', 'cc', 'https://cdn.discordapp.com/avatars/1/a.png') RETURNING id").Scan(&authorID); err != nil {
 		t.Fatal(err)
 	}
 	h := NewHandler(pool, loggedAs(authorID))
@@ -275,12 +275,32 @@ func TestCreateListAndGet(t *testing.T) {
 	}
 }
 
+// Só quem já escolheu o curso posta ideia: sem curso é 403 course_required; depois de escolher, 201.
+func TestCreateRequiresCourse(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+	var userID int64
+	if err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Aluno Sem Curso') RETURNING id`).Scan(&userID); err != nil {
+		t.Fatal(err)
+	}
+	h := NewHandler(pool, loggedAs(userID))
+	if rec := do(t, h.Create, http.MethodPost, validBody); rec.Code != 403 || decode[errorResponse](t, rec).Error != "course_required" {
+		t.Errorf("sem curso: %d (%s), quer 403 course_required", rec.Code, rec.Body)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE users SET course = 'ads' WHERE id = $1`, userID); err != nil {
+		t.Fatal(err)
+	}
+	if rec := do(t, h.Create, http.MethodPost, validBody); rec.Code != 201 {
+		t.Errorf("com curso: %d (%s), quer 201", rec.Code, rec.Body)
+	}
+}
+
 // Fluxo do "quero participar" contra Postgres real: marcar, contar, ver a lista como autor e desistir.
 func TestInterests(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	var authorID, fanID int64
-	err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID)
+	err := pool.QueryRow(ctx, `INSERT INTO users (name, course) VALUES ('Autora de Teste', 'cc') RETURNING id`).Scan(&authorID)
 	if err == nil {
 		// discord_id fictício: só existe no banco de teste.
 		err = pool.QueryRow(ctx, `INSERT INTO users (name, discord_id) VALUES ('Ana Teste', 'discord-fake-1') RETURNING id`).Scan(&fanID)
@@ -309,6 +329,9 @@ func TestInterests(t *testing.T) {
 		if rec := doID(t, step.hf, http.MethodPut, step.id); rec.Code != step.wantStatus {
 			t.Errorf("%s: status = %d (%s), quer %d", step.name, rec.Code, rec.Body, step.wantStatus)
 		}
+	}
+	if rec := doID(t, author.PutInterest, http.MethodPut, id); decode[errorResponse](t, rec).Error != "own_idea" {
+		t.Errorf("autor na própria ideia: %s, quer own_idea", rec.Body)
 	}
 
 	// Mural: os dois veem 1 interessado; só quem marcou aparece como interessado.
@@ -361,7 +384,7 @@ func TestUpdateAndDelete(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	var authorID, otherID int64
-	err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID)
+	err := pool.QueryRow(ctx, `INSERT INTO users (name, course) VALUES ('Autora de Teste', 'cc') RETURNING id`).Scan(&authorID)
 	if err == nil {
 		err = pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Outro Aluno') RETURNING id`).Scan(&otherID)
 	}
@@ -437,7 +460,7 @@ func TestStatus(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	var authorID, fanID int64
-	err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID)
+	err := pool.QueryRow(ctx, `INSERT INTO users (name, course) VALUES ('Autora de Teste', 'cc') RETURNING id`).Scan(&authorID)
 	if err == nil {
 		err = pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Ana Teste') RETURNING id`).Scan(&fanID)
 	}
@@ -521,7 +544,7 @@ func TestMuralAndShowcase(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	var authorID int64
-	if err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID); err != nil {
+	if err := pool.QueryRow(ctx, `INSERT INTO users (name, course) VALUES ('Autora de Teste', 'cc') RETURNING id`).Scan(&authorID); err != nil {
 		t.Fatal(err)
 	}
 	author, visitor := NewHandler(pool, loggedAs(authorID)), NewHandler(pool, loggedAs(0))
@@ -592,7 +615,7 @@ func TestListRejectsBadFilter(t *testing.T) {
 func TestListFilters(t *testing.T) {
 	pool := testDB(t)
 	var authorID int64
-	if err := pool.QueryRow(context.Background(), `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID); err != nil {
+	if err := pool.QueryRow(context.Background(), `INSERT INTO users (name, course) VALUES ('Autora de Teste', 'cc') RETURNING id`).Scan(&authorID); err != nil {
 		t.Fatal(err)
 	}
 	author, visitor := NewHandler(pool, loggedAs(authorID)), NewHandler(pool, loggedAs(0))
@@ -678,7 +701,7 @@ func TestListRejectsBadSearch(t *testing.T) {
 func TestListSearch(t *testing.T) {
 	pool := testDB(t)
 	var authorID int64
-	if err := pool.QueryRow(context.Background(), `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID); err != nil {
+	if err := pool.QueryRow(context.Background(), `INSERT INTO users (name, course) VALUES ('Autora de Teste', 'cc') RETURNING id`).Scan(&authorID); err != nil {
 		t.Fatal(err)
 	}
 	author, visitor := NewHandler(pool, loggedAs(authorID)), NewHandler(pool, loggedAs(0))
@@ -740,9 +763,9 @@ func TestMine(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	var authorID, otherID int64
-	err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID)
+	err := pool.QueryRow(ctx, `INSERT INTO users (name, course) VALUES ('Autora de Teste', 'cc') RETURNING id`).Scan(&authorID)
 	if err == nil {
-		err = pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Outro Aluno') RETURNING id`).Scan(&otherID)
+		err = pool.QueryRow(ctx, `INSERT INTO users (name, course) VALUES ('Outro Aluno', 'ads') RETURNING id`).Scan(&otherID)
 	}
 	if err != nil {
 		t.Fatal(err)
@@ -805,7 +828,7 @@ func TestProfileRejectsVisitorAndBadID(t *testing.T) {
 func TestIdeaSkills(t *testing.T) {
 	pool := testDB(t)
 	var authorID int64
-	if err := pool.QueryRow(context.Background(), `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID); err != nil {
+	if err := pool.QueryRow(context.Background(), `INSERT INTO users (name, course) VALUES ('Autora de Teste', 'cc') RETURNING id`).Scan(&authorID); err != nil {
 		t.Fatal(err)
 	}
 	h := NewHandler(pool, loggedAs(authorID))
@@ -970,7 +993,7 @@ func TestModeratorDeletes(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	var authorID, modID int64
-	err := pool.QueryRow(ctx, `INSERT INTO users (name) VALUES ('Autora de Teste') RETURNING id`).Scan(&authorID)
+	err := pool.QueryRow(ctx, `INSERT INTO users (name, course) VALUES ('Autora de Teste', 'cc') RETURNING id`).Scan(&authorID)
 	if err == nil {
 		err = pool.QueryRow(ctx, `INSERT INTO users (name, is_moderator) VALUES ('Moderador de Teste', true) RETURNING id`).Scan(&modID)
 	}

@@ -23,6 +23,8 @@ Login com Discord ([fatia 2](fatia-2-login.md)), habilidades, filtros, busca, pa
 > **Atualizado pela [fatia 12](fatia-12-habilidades-da-ideia.md):** o `POST` aceita `skills`, e toda ideia nas respostas ganha `skills`.
 >
 > **Atualizado pela [fatia 17](fatia-17-filtros-do-mural.md):** `GET /api/ideas` aceita os filtros `status`, `course`, `category` e `skill`, só para quem está logado.
+>
+> **Atualizado pelo T2 (`fix/regras-e-ux`):** só quem já escolheu o curso posta ideia; sem curso, a API responde `403 course_required`. Antes só o front barrava.
 
 ## Banco
 
@@ -133,6 +135,7 @@ Erros:
 
 - `400 Bad Request` — JSON malformado ou com tipo errado (ex.: `"slots": "3"`): `{ "error": "invalid_json" }`.
 - `401 Unauthorized` — sem sessão válida: `{ "error": "unauthenticated" }`.
+- `403 Forbidden` — o aluno ainda não escolheu o curso: `{ "error": "course_required" }`. Conferido na gravação, depois da validação do corpo.
 - `413 Content Too Large` — corpo acima de 64 KB: `{ "error": "body_too_large" }`.
 - `500 Internal Server Error` — `{ "error": "internal" }`, sem vazar detalhe interno.
 

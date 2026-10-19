@@ -40,6 +40,10 @@ export function ProfileForm({ me }: { me: Me }) {
         router.push(`/alunos/${me.id}`); // o formulário fica travado até a troca de página
         return;
       }
+      if (res.status === 401) {
+        router.push("/login"); // a sessão expirou: o formulário fica travado até a troca de página
+        return;
+      }
       const body: ApiError = await res.json();
       setFields(body.fields ?? {});
       setMessage(body.fields ? "Corrija os campos indicados." : "Não foi possível salvar o perfil. Tente de novo.");

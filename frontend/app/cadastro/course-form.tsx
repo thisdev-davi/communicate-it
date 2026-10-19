@@ -37,6 +37,10 @@ export function CourseForm() {
         router.push("/");
         return;
       }
+      if (res.status === 401) {
+        router.push("/login"); // a sessão expirou
+        return;
+      }
       const body: ApiError = await res.json();
       setInvalid(Boolean(body.fields?.course));
       setMessage(body.fields ? "Corrija o campo indicado." : "Não foi possível salvar o curso. Tente de novo.");

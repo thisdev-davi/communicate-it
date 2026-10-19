@@ -10,27 +10,38 @@ import (
 	"time"
 )
 
-const addAttendee = `-- name: AddAttendee :exec
-INSERT INTO event_attendees (event_id, user_id) VALUES ($1, $2)
+const addAttendee = `-- name: AddAttendee :execrows
+INSERT INTO event_attendees (event_id, user_id)
+SELECT id, $1 FROM events
+WHERE id = $2
+  AND starts_at >= date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo'
+FOR SHARE
 ON CONFLICT DO NOTHING
 `
 
 type AddAttendeeParams struct {
-	EventID int64
 	UserID  int64
+	EventID int64
 }
 
+// Confere e grava na mesma instrução: só evento da agenda (a mesma regra do IsUpcoming). O FOR SHARE segura a linha
+// do evento até o fim: se ele é editado ou apagado ao mesmo tempo, um espera o outro, e o insert reconfere a linha nova.
 // Repetir não dá erro nem duplica: a chave (event_id, user_id) já existe e o insert vira nada.
-func (q *Queries) AddAttendee(ctx context.Context, arg AddAttendeeParams) error {
-	_, err := q.db.Exec(ctx, addAttendee, arg.EventID, arg.UserID)
-	return err
+// 0 linhas = não gravou (não existe, já passou ou a pessoa já estava na lista); o handler descobre qual.
+func (q *Queries) AddAttendee(ctx context.Context, arg AddAttendeeParams) (int64, error) {
+	result, err := q.db.Exec(ctx, addAttendee, arg.UserID, arg.EventID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const createEvent = `-- name: CreateEvent :one
 
 WITH e AS (
     INSERT INTO events (author_id, title, description, starts_at, location)
-    VALUES ($1, $2, $3, $4, $5)
+    SELECT $1, $2, $3, $4, $5
+    FROM users WHERE id = $1 AND course IS NOT NULL
     RETURNING id, author_id, title, description, starts_at, location, created_at
 )
 SELECT e.id, e.title, e.description, e.starts_at, e.location, e.created_at,
@@ -66,6 +77,7 @@ type CreateEventRow struct {
 // attendee_count e going dizem quantos confirmaram presença e se quem pede (viewer) é um deles; viewer 0 = visitante.
 // "De hoje em diante" é sempre no horário de Brasília: o evento de hoje fica aberto até o fim do dia, mesmo depois de começar.
 // Evento recém-criado ainda não tem confirmados: as duas colunas saem fixas.
+// Só grava se o autor já escolheu o curso; sem curso não volta linha (pgx.ErrNoRows), e o handler responde 403.
 func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (CreateEventRow, error) {
 	row := q.db.QueryRow(ctx, createEvent,
 		arg.AuthorID,
@@ -178,7 +190,7 @@ SELECT starts_at >= date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT
 FROM events WHERE id = $1
 `
 
-// Se o evento ainda está na agenda: só esses recebem confirmação.
+// Se o evento ainda está na agenda: quando o AddAttendee não grava, é ele que diz o porquê.
 func (q *Queries) IsUpcoming(ctx context.Context, id int64) (bool, error) {
 	row := q.db.QueryRow(ctx, isUpcoming, id)
 	var column_1 bool

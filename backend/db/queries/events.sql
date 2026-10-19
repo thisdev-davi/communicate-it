@@ -4,9 +4,11 @@
 
 -- name: CreateEvent :one
 -- Evento recém-criado ainda não tem confirmados: as duas colunas saem fixas.
+-- Só grava se o autor já escolheu o curso; sem curso não volta linha (pgx.ErrNoRows), e o handler responde 403.
 WITH e AS (
     INSERT INTO events (author_id, title, description, starts_at, location)
-    VALUES ($1, $2, $3, $4, $5)
+    SELECT $1, $2, $3, $4, $5
+    FROM users WHERE id = $1 AND course IS NOT NULL
     RETURNING *
 )
 SELECT e.id, e.title, e.description, e.starts_at, e.location, e.created_at,
@@ -36,13 +38,20 @@ JOIN users u ON u.id = e.author_id
 WHERE e.id = sqlc.arg('id');
 
 -- name: IsUpcoming :one
--- Se o evento ainda está na agenda: só esses recebem confirmação.
+-- Se o evento ainda está na agenda: quando o AddAttendee não grava, é ele que diz o porquê.
 SELECT starts_at >= date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo'
 FROM events WHERE id = $1;
 
--- name: AddAttendee :exec
+-- name: AddAttendee :execrows
+-- Confere e grava na mesma instrução: só evento da agenda (a mesma regra do IsUpcoming). O FOR SHARE segura a linha
+-- do evento até o fim: se ele é editado ou apagado ao mesmo tempo, um espera o outro, e o insert reconfere a linha nova.
 -- Repetir não dá erro nem duplica: a chave (event_id, user_id) já existe e o insert vira nada.
-INSERT INTO event_attendees (event_id, user_id) VALUES ($1, $2)
+-- 0 linhas = não gravou (não existe, já passou ou a pessoa já estava na lista); o handler descobre qual.
+INSERT INTO event_attendees (event_id, user_id)
+SELECT id, sqlc.arg('user_id') FROM events
+WHERE id = sqlc.arg('event_id')
+  AND starts_at >= date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo'
+FOR SHARE
 ON CONFLICT DO NOTHING;
 
 -- name: RemoveAttendee :exec
