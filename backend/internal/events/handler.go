@@ -82,7 +82,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	row, err := h.q.CreateEvent(r.Context(), CreateEventParams{
+	id, err := h.q.CreateEvent(r.Context(), CreateEventParams{
 		AuthorID:    authorID,
 		Title:       req.Title,
 		Description: req.Description,
@@ -97,7 +97,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		internalError(w, "create event", err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, toResponse(ListEventsRow(row)))
+	h.writeEvent(w, r, http.StatusCreated, id, authorID)
 }
 
 // List é a agenda: os eventos de hoje em diante, do mais próximo. Para todo mundo, visitante incluído.
@@ -129,23 +129,33 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	row, err := h.q.UpdateEvent(r.Context(), UpdateEventParams{
+	err := h.q.UpdateEvent(r.Context(), UpdateEventParams{
 		ID:          id,
-		Viewer:      userID,
 		Title:       req.Title,
 		Description: req.Description,
 		StartsAt:    req.startsAt,
 		Location:    req.Location,
 	})
-	if errors.Is(err, pgx.ErrNoRows) { // apagado entre o organizerOf e aqui
-		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
-		return
-	}
 	if err != nil {
 		internalError(w, "update event", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toResponse(ListEventsRow(row)))
+	h.writeEvent(w, r, http.StatusOK, id, userID)
+}
+
+// writeEvent responde com o evento que o POST ou o PUT acabou de gravar, no mesmo formato do GET (sem a lista de presença).
+// going é do ponto de vista de quem gravou: a moderadora que edita evento alheio vê se ela vai.
+func (h *Handler) writeEvent(w http.ResponseWriter, r *http.Request, status int, id, viewer int64) {
+	row, err := h.q.GetEvent(r.Context(), GetEventParams{ID: id, Viewer: viewer})
+	if errors.Is(err, pgx.ErrNoRows) { // apagado entre a gravação e aqui (o UPDATE de um evento que sumiu não acusa erro)
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
+		return
+	}
+	if err != nil {
+		internalError(w, "get event", err)
+		return
+	}
+	writeJSON(w, status, toResponse(ListEventsRow(row)))
 }
 
 // Delete apaga o evento de vez, e a lista de presença vai junto (ON DELETE CASCADE). O criador ou um moderador.

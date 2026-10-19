@@ -125,7 +125,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if !readBody(w, r, &req) {
 		return
 	}
-	row, err := h.q.CreateIdea(r.Context(), CreateIdeaParams{
+	id, err := h.q.CreateIdea(r.Context(), CreateIdeaParams{
 		AuthorID:    authorID,
 		Title:       req.Title,
 		Description: req.Description,
@@ -142,12 +142,12 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		internalError(w, "create idea", err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, toResponse(ListIdeasRow(row)))
+	h.writeIdea(w, r, http.StatusCreated, id, authorID)
 }
 
 // Update troca os campos da ideia (os mesmos do postar). Só o autor; status, autor e data não mudam por aqui.
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
-	id, ok := h.authorOf(w, r, false)
+	userID, id, ok := h.authorOf(w, r, false)
 	if !ok {
 		return
 	}
@@ -155,7 +155,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if !readBody(w, r, &req) {
 		return
 	}
-	row, err := h.q.UpdateIdea(r.Context(), UpdateIdeaParams{
+	err := h.q.UpdateIdea(r.Context(), UpdateIdeaParams{
 		ID:          id,
 		Title:       req.Title,
 		Description: req.Description,
@@ -164,20 +164,30 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		Slots:       int32(req.Slots), // seguro: validate garante 1–20
 		Skills:      req.Skills,
 	})
-	if errors.Is(err, pgx.ErrNoRows) { // apagada entre o authorOf e aqui
-		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
-		return
-	}
 	if err != nil {
 		internalError(w, "update idea", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, toResponse(ListIdeasRow(row)))
+	h.writeIdea(w, r, http.StatusOK, id, userID)
+}
+
+// writeIdea responde com a ideia que o POST ou o PUT acabou de gravar, no mesmo formato do GET (sem a lista de interessados).
+func (h *Handler) writeIdea(w http.ResponseWriter, r *http.Request, status int, id, viewer int64) {
+	row, err := h.q.GetIdea(r.Context(), GetIdeaParams{ID: id, Viewer: viewer})
+	if errors.Is(err, pgx.ErrNoRows) { // apagada entre a gravação e aqui (o UPDATE de uma ideia que sumiu não acusa erro)
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
+		return
+	}
+	if err != nil {
+		internalError(w, "get idea", err)
+		return
+	}
+	writeJSON(w, status, toResponse(ListIdeasRow(row)))
 }
 
 // Delete apaga a ideia de vez, e os interessados vão junto (ON DELETE CASCADE). O autor ou um moderador.
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
-	id, ok := h.authorOf(w, r, true)
+	_, id, ok := h.authorOf(w, r, true)
 	if !ok {
 		return
 	}
@@ -191,7 +201,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 // SetStatus troca o status da ideia. Só o autor. Só ideia aberta recebe interessados (PutInterest),
 // então trocar o status é também o jeito de travar ou destravar a lista.
 func (h *Handler) SetStatus(w http.ResponseWriter, r *http.Request) {
-	id, ok := h.authorOf(w, r, false)
+	_, id, ok := h.authorOf(w, r, false)
 	if !ok {
 		return
 	}
@@ -423,32 +433,32 @@ func (h *Handler) loggedIn(w http.ResponseWriter, r *http.Request) (userID int64
 	return userID, moderator, true
 }
 
-// authorOf devolve o id da ideia da rota quando quem chama é o autor dela (ou um moderador, com orModerator).
+// authorOf devolve quem chama e o id da ideia da rota quando quem chama é o autor dela (ou um moderador, com orModerator).
 // Senão já responde 401 (sem sessão), 404 (ideia não existe) ou 403 (não é o autor) e devolve ok = false.
-func (h *Handler) authorOf(w http.ResponseWriter, r *http.Request, orModerator bool) (id int64, ok bool) {
+func (h *Handler) authorOf(w http.ResponseWriter, r *http.Request, orModerator bool) (userID, id int64, ok bool) {
 	userID, moderator, ok := h.loggedIn(w, r)
 	if !ok {
-		return 0, false
+		return 0, 0, false
 	}
 	id, ok = pathID(r)
 	if !ok {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
-		return 0, false
+		return 0, 0, false
 	}
 	idea, err := h.q.GetIdeaAuthor(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
-		return 0, false
+		return 0, 0, false
 	}
 	if err != nil {
 		internalError(w, "get idea author", err)
-		return 0, false
+		return 0, 0, false
 	}
 	if idea.AuthorID == userID || (orModerator && moderator) {
-		return id, true
+		return userID, id, true
 	}
 	writeJSON(w, http.StatusForbidden, errorResponse{Error: "not_author"})
-	return 0, false
+	return 0, 0, false
 }
 
 // pathID lê o {id} da rota. Id que não é inteiro positivo é só uma ideia que não existe: quem chama responde 404 sem ir ao banco.
