@@ -33,7 +33,7 @@ var (
 	statuses = map[string]bool{"open": true, "in_progress": true, "done": true} // docs/contratos/fatia-7-status.md
 	// Skills é o catálogo de habilidades (docs/contratos/fatia-11-habilidades.md), na ordem em que são gravadas e mostradas.
 	// Slice e não map porque a ordem importa. Exportada porque o perfil (pacote auth) valida contra ela.
-	Skills = []string{"frontend", "backend", "mobile", "design", "data", "ai", "devops", "games", "security", "hardware", "testing", "management"}
+	Skills = []string{"competitive_programming", "frontend", "backend", "mobile", "design", "data", "ai", "devops", "games", "security", "hardware", "testing", "management"}
 )
 
 type Handler struct {
