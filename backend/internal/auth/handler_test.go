@@ -77,6 +77,11 @@ func cookie(rec *httptest.ResponseRecorder, name string) *http.Cookie {
 	return nil
 }
 
+// hostCookie confere o que o prefixo __Host- exige (Secure, Path=/, sem Domain) e o HttpOnly/SameSite de sempre.
+func hostCookie(c *http.Cookie, name string) bool {
+	return c != nil && c.Name == name && c.Secure && c.Path == "/" && c.Domain == "" && c.HttpOnly && c.SameSite == http.SameSiteLaxMode
+}
+
 func TestLoginRedirectsWithState(t *testing.T) {
 	rec := httptest.NewRecorder()
 	newTestHandler(nil, nil).Login(rec, httptest.NewRequest(http.MethodGet, "/api/auth/discord", nil))
@@ -85,7 +90,7 @@ func TestLoginRedirectsWithState(t *testing.T) {
 		t.Fatalf("status = %d, quer 302", rec.Code)
 	}
 	c := cookie(rec, stateCookie)
-	if c == nil || c.Value == "" || !c.HttpOnly || c.SameSite != http.SameSiteLaxMode {
+	if !hostCookie(c, "__Host-oauth_state") || c.Value == "" {
 		t.Fatalf("cookie de state inválido: %+v", c)
 	}
 	loc, _ := url.Parse(rec.Header().Get("Location"))
@@ -115,10 +120,19 @@ func TestCallbackFailures(t *testing.T) {
 			if cookie(rec, sessionCookie) != nil {
 				t.Error("não devia criar sessão")
 			}
-			if c := cookie(rec, stateCookie); c == nil || c.MaxAge >= 0 {
+			if c := cookie(rec, stateCookie); !hostCookie(c, "__Host-oauth_state") || c.MaxAge >= 0 {
 				t.Errorf("state devia ser apagado: %+v", c)
 			}
 		})
+	}
+}
+
+// Sem cookie o logout não toca no banco, então roda sem conexão (nil); ainda assim apaga o cookie.
+func TestLogoutWithoutSessionClearsCookie(t *testing.T) {
+	rec := httptest.NewRecorder()
+	newTestHandler(nil, nil).Logout(rec, httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil))
+	if c := cookie(rec, "__Host-session"); rec.Code != http.StatusNoContent || !hostCookie(c, "__Host-session") || c.MaxAge >= 0 {
+		t.Fatalf("logout: %d, cookie %+v", rec.Code, c)
 	}
 }
 
@@ -161,7 +175,7 @@ func TestLoginMeLogout(t *testing.T) {
 			t.Fatalf("callback: %d %s, quer 302 %s", rec.Code, rec.Header().Get("Location"), wantLocation)
 		}
 		c := cookie(rec, sessionCookie)
-		if c == nil || c.Value == "" || !c.HttpOnly || c.Path != "/" {
+		if !hostCookie(c, "__Host-session") || c.Value == "" {
 			t.Fatalf("cookie de sessão inválido: %+v", c)
 		}
 		return c
@@ -270,7 +284,7 @@ func TestLoginMeLogout(t *testing.T) {
 	req.AddCookie(session)
 	rec = httptest.NewRecorder()
 	h.Logout(rec, req)
-	if c := cookie(rec, sessionCookie); rec.Code != http.StatusNoContent || c == nil || c.MaxAge >= 0 {
+	if c := cookie(rec, sessionCookie); rec.Code != http.StatusNoContent || !hostCookie(c, "__Host-session") || c.MaxAge >= 0 {
 		t.Fatalf("logout: %d, cookie %+v", rec.Code, c)
 	}
 	if rec = me(session); rec.Code != http.StatusUnauthorized {
