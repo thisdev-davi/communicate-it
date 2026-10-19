@@ -88,6 +88,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		StartsAt:    req.startsAt,
 		Location:    req.Location,
 	})
+	if errors.Is(err, pgx.ErrNoRows) { // o insert só grava para quem já escolheu o curso
+		writeJSON(w, http.StatusForbidden, errorResponse{Error: "course_required"})
+		return
+	}
 	if err != nil {
 		internalError(w, "create event", err)
 		return
@@ -240,6 +244,17 @@ func (h *Handler) PutAttendance(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
 		return
 	}
+	// A regra mora no próprio insert: conferir antes e gravar depois deixaria o evento sair da agenda no meio.
+	added, err := h.q.AddAttendee(r.Context(), AddAttendeeParams{EventID: id, UserID: userID})
+	if err != nil {
+		internalError(w, "add attendee", err)
+		return
+	}
+	if added == 1 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	// Não gravou: a consulta abaixo só escolhe a resposta.
 	upcoming, err := h.q.IsUpcoming(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "not_found"})
@@ -253,11 +268,7 @@ func (h *Handler) PutAttendance(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, errorResponse{Error: "past"})
 		return
 	}
-	if err := h.q.AddAttendee(r.Context(), AddAttendeeParams{EventID: id, UserID: userID}); err != nil {
-		internalError(w, "add attendee", err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent) // na agenda: a pessoa já estava na lista
 }
 
 // DeleteAttendance é o "desistir", até em evento passado. Responde 204 mesmo sem presença ou sem evento:
