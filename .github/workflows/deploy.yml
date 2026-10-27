@@ -1,5 +1,5 @@
-# Checagens em todo PR e, na main, deploy na VPS depois que elas passam.
-# O repositório é público: os logs também são. Nada aqui imprime segredo, e o .env de produção nunca passa pelo GitHub.
+# Checagens em todo PR e, na main, deploy da API no Render depois que elas passam.
+# O repositório é público: os logs também são. Nada aqui imprime segredo.
 name: CI e deploy
 
 on:
@@ -8,7 +8,7 @@ on:
     branches: [main]
     # commit só de documentação não precisa reconstruir a produção
     paths-ignore: ["docs/**", "**.md"]
-  # botão "Run workflow" na aba Actions, para refazer o deploy sem commit novo (ex.: depois de trocar o .env)
+  # botão "Run workflow" na aba Actions, para refazer o deploy sem commit novo (ex.: o primeiro, depois de criar os secrets)
   workflow_dispatch:
 
 # o token do GitHub só lê o código; nenhum job escreve no repositório
@@ -65,6 +65,8 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
+  # A API sobe no Render só por este job (auto-deploy desligado lá): migration no Neon primeiro, API nova depois.
+  # O front não passa por aqui: a Vercel publica sozinha a cada push na main.
   deploy:
     needs: [api, web]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -74,20 +76,21 @@ jobs:
     # dois merges seguidos entram em fila, nunca dois deploys ao mesmo tempo
     concurrency: production
     steps:
-      # A chave só roda o deploy.sh (command= no authorized_keys); known_hosts fixo para não aceitar um servidor falso.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
       # Segredos entram por env e variável entre aspas, nunca por ${{ }} dentro do script.
-      - name: Roda o deploy na VPS
+      - name: Roda as migrations no Neon
+        working-directory: backend
         env:
-          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-          HOST: ${{ secrets.DEPLOY_HOST }}
-        run: |
-          install -d -m 700 ~/.ssh
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          install -m 600 /dev/null ~/.ssh/deploy
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy
-          ssh -i ~/.ssh/deploy -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 "deploy@$HOST"
-      - name: Confere se o site e a API respondem
-        run: |
-          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null https://comunica.5-183-8-106.sslip.io/
-          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null https://comunica.5-183-8-106.sslip.io/api/ideas
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: go run github.com/pressly/goose/v3/cmd/goose@v3.28.0 -dir db/migrations postgres "$DATABASE_URL" up
+      # O hook só enfileira o deploy; o resultado aparece no painel do Render.
+      - name: Dispara o deploy da API no Render
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl -fsS -o /dev/null -X POST "$HOOK"

@@ -31,7 +31,7 @@ A conversa dos grupos acontece no Discord central da comunidade — a plataforma
 
 **Repositório:** monorepo — um único repositório com as pastas backend e frontend. Organização do Go começando simples (cmd para a entrada, internal por domínio).
 
-**Deploy:** VPS própria (Hostinger), cada parte em um container Docker, com um proxy reverso Caddy na frente distribuindo por subdomínio e cuidando do HTTPS, sem conflitar com o que já roda na VPS.
+**Deploy:** tudo no plano grátis: front na Vercel, API Go no Render (container Docker) e Postgres no Neon. O navegador fala só com o domínio da Vercel, que repassa `/api/*` para a API. A VPS própria saiu do ar em 21 de outubro de 2026.
 
 ```mermaid
 flowchart LR
@@ -122,7 +122,7 @@ Decidida em 16 de outubro de 2026. Quatro fatias, nesta ordem, cada uma com o pr
 **Onde estamos e o que falta**
 
 - A fase está completa: as quatro fatias foram feitas. O que ficou de fora de propósito está em "Fica para depois", no fim desta seção.
-- Deploy: todo merge na `main` sobe sozinho e roda as migrations. Para a moderação valer em produção, o root precisa preencher `DISCORD_MOD_ROLE_IDS` no `.env` da VPS e copiar o `compose.prod.yaml` novo (README, "Mudou o `compose.prod.yaml`"). Sem isso, a API sobe normalmente, só que sem moderadores.
+- Deploy: todo merge na `main` sobe sozinho e roda as migrations. Para a moderação valer em produção, `DISCORD_MOD_ROLE_IDS` precisa estar nas variáveis do Render (README, "Deploy"). Sem isso, a API sobe normalmente, só que sem moderadores.
 - Decidido em 17 de outubro de 2026: comentários nas ideias saíram do MVP. A conversa já vive no Discord, o "quero participar" e o "Chamar no Discord" cobrem a dúvida sobre a ideia, e comentário traria moderação nova. Foram para a fila em `IDEIA.md`.
 - Depois dela veio a [fase de descoberta](#fase-de-descoberta) (filtros e busca, item 6 das funcionalidades).
 - Lançamento: decidido abrir a plataforma para a comunidade no Discord com a fatia 16 na `main` (já está), sem esperar a descoberta. O uso real mostra a urgência dos filtros.
@@ -172,7 +172,7 @@ Decidida em 17 de outubro de 2026 (item 6 das funcionalidades) e concluída em 1
 Fechado em 19 de outubro de 2026: as sete funcionalidades do MVP estão na `main` (fatias 1 a 18), menos comentários nas ideias, que foram para a fila.
 
 - Depois do fechamento, uma revisão do código virou correções sem funcionalidade nova: cookies `__Host-` e headers de segurança (PR #37), "quero participar" e "vou participar" sem condição de corrida e curso obrigatório também na API (PR #38), e um refactor que apaga consultas repetidas. A habilidade "Maratona de Programação" entrou no catálogo (PR #39).
-- Pendência em produção: preencher `DISCORD_MOD_ROLE_IDS` no `.env` da VPS ([fase de eventos](#fase-de-eventos)). Sem isso, ninguém é moderador.
+- Pendência em produção: preencher `DISCORD_MOD_ROLE_IDS` nas variáveis do Render (README, "Deploy"). Sem isso, ninguém é moderador.
 - Nada novo entra no MVP. A próxima fase sai da fila do [IDEIA](IDEIA.md), começa pelo `grill-me` e passa pela régua de decisão.
 
 ## Fase do Discord

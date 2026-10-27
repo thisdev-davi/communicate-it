@@ -46,7 +46,7 @@ Cada fatia tem o contrato em [`docs/contratos/`](docs/contratos/); as fases de e
 | Banco | PostgreSQL, sqlc + pgx, migrations com goose |
 | Front | Next.js (React) |
 | Login | Discord OAuth |
-| Deploy | Docker numa VPS, Caddy como proxy reverso |
+| Deploy | Vercel (front), Render (API em Docker) e Neon (Postgres), no plano grátis |
 
 ## Rodando localmente
 
@@ -87,104 +87,34 @@ O login usa OAuth do Discord e só deixa entrar quem está no servidor da comuni
 O cargo mora no Discord: quem dá e tira são os admins do servidor. A API relê os cargos a cada login e grava `users.is_moderator`. Tirar o cargo só vale no próximo login da pessoa, até 30 dias depois (a duração da sessão). O mesmo vale para quem é removido ou banido do servidor: a API só confere se a pessoa é membro no login, então ela continua com acesso até a sessão expirar. Nos dois casos, para valer na hora, apague as sessões dela, o que força um novo login (e quem saiu do servidor não consegue entrar de novo):
 
 ```sh
-# local; na VPS, o mesmo DELETE dentro do container do banco (docker compose -f compose.prod.yaml exec db psql -U comunica -d comunica)
+# local; em produção, o mesmo DELETE no SQL Editor do Neon
 docker compose exec db psql -U comunica -d comunica -c "DELETE FROM sessions WHERE user_id = <id do usuário>;"
 ```
 
 O secret nunca vai para o repositório: ele vive só no `.env`.
 
-## Deploy na VPS
+## Deploy
 
-Em https://comunica.5-183-8-106.sslip.io. A VPS é dividida com outros projetos: o Comunica tem compose e Postgres próprios e nenhuma porta aberta no host. O HTTPS vem do Caddy compartilhado em `/opt/proxy`, que manda `/api/*` para `comunica-api` e o resto para `comunica-web` pela rede Docker `proxy`. A cada subida, o serviço `migrate` roda o goose antes da API.
+Tudo no plano grátis, na costa leste dos EUA: front na Vercel, API no Render (Docker) e banco no Neon. O navegador só fala com https://communicate-it.vercel.app. O Next repassa `/api/*` para a API (`frontend/next.config.ts`), então o cookie da sessão e o callback do Discord ficam no domínio do front.
 
-Na VPS:
+Todo push na `main` (menos os só de `docs/` e `.md`) roda o workflow `.github/workflows/deploy.yml`: testes da API e checagens do front e, se passarem, o `goose up` no Neon e o deploy hook do Render. Assim a migration sempre roda antes da API nova. O mesmo workflow roda as checagens em todo PR. A Vercel publica o front sozinha a cada push na `main`. Os previews de PR mostram as telas, mas o login só funciona no domínio de produção. Para refazer o deploy da API sem commit novo: aba **Actions** → **CI e deploy** → **Run workflow**, ou `gh workflow run deploy.yml`.
 
-```
-/opt/comunica-faesa/       root, 755: o usuário deploy não cria nem troca nada aqui
-  compose.prod.yaml        root, 644: copiado à mão de app/
-  deploy.sh                root, 644: copiado à mão de app/
-  .env                     root:deploy, 640: segredos (o compose roda como deploy e precisa ler)
-  app/                     deploy: clone do repositório, onde o deploy automático faz git pull
-```
+### Primeira vez
 
-Por que o compose e o `deploy.sh` ficam fora do git: o usuário `deploy` está no grupo `docker`, que na prática vale root. Se esses dois arquivos viessem do `git pull`, um commit na `main` (o repositório é público) bastaria para virar root na VPS, por exemplo montando `/` num container. Fora do alcance do git, um commit na `main` só muda o código que roda dentro dos containers: o build do Docker é isolado, e volumes e privilégios vêm só do compose do root.
+1. **Neon:** crie o projeto com Postgres 17 na região AWS US East 1 (N. Virginia). Em **Connect**, desligue o *connection pooling* (a API usa os prepared statements do pgx), copie a string e troque o que vem depois do `?` por `sslmode=verify-full`.
+2. **Discord:** no Developer Portal, crie uma aplicação só para produção, a "Communicate IT". A de dev continua no `.env` local. Em **OAuth2**, adicione o redirect `https://communicate-it.vercel.app/api/auth/discord/callback` e copie o Client ID e o Client Secret. No servidor, crie um convite que nunca expira e sem limite de usos.
+3. **Render:** **New → Web Service** com este repositório, linguagem Docker, Root Directory `backend`, região Virginia, instância Free e nome `communicate-it-api`. Variáveis: `DATABASE_URL` (a string do Neon), `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URL` (o redirect do passo 2), `DISCORD_GUILD_ID` e `DISCORD_MOD_ROLE_IDS`. A porta, o Render passa sozinho em `PORT`. Depois de criado, em **Settings**: **Auto-Deploy** em **Off** (quem faz o deploy é o workflow, depois da migration). Copie também o **Deploy Hook**.
+4. **Vercel:** **Add New → Project** com este repositório, Root Directory `frontend` e nome `communicate-it`. Variáveis, em todos os ambientes: `API_URL=https://communicate-it-api.onrender.com` e `DISCORD_INVITE_URL` (o convite do passo 2). O rewrite lê o `API_URL` no build, então ela precisa existir antes do primeiro deploy.
+5. **GitHub:** em **Settings → Environments → production** (liberado só para a `main`), crie os secrets `PROD_DATABASE_URL` (a string do Neon) e `RENDER_DEPLOY_HOOK_URL` (quem tem essa URL dispara deploy, então ela é secreta). Depois, rode o **Run workflow**: ele cria as tabelas e sobe a API.
+6. **Pinger:** no [cron-job.org](https://cron-job.org), um GET em `https://communicate-it.vercel.app/login` a cada 10 minutos. O Render free dorme depois de 15 minutos sem acesso, e quem chega nessa hora espera cerca de 1 minuto. A página chama `GET /api/me` sem cookie: isso acorda a API, que responde 401 sem consultar o banco, e o Neon continua dormindo. Uma API acordada o mês todo gasta cerca de 744 h das 750 h grátis do Render, então ela precisa ser o único serviço free da conta.
 
-Primeira vez:
+### No dia a dia
 
-1. No Discord Developer Portal, adicione o redirect `https://comunica.5-183-8-106.sslip.io/api/auth/discord/callback` (o de localhost continua).
-2. Na VPS, como root:
-
-   ```sh
-   useradd -m -s /bin/sh -G docker deploy
-   install -d -m 755 -o root -g root /opt/comunica-faesa
-   git clone https://github.com/thisdev-davi/comunica-faesa.git /opt/comunica-faesa/app
-   chown -R deploy:deploy /opt/comunica-faesa/app
-   cd /opt/comunica-faesa
-   install -o root -g root -m 644 app/compose.prod.yaml app/deploy.sh .
-   # .env só com estas chaves; a senha em hex porque vai dentro da URL do banco
-   cat > .env <<EOF
-   POSTGRES_PASSWORD=$(openssl rand -hex 24)
-   DISCORD_CLIENT_ID=
-   DISCORD_CLIENT_SECRET=
-   DISCORD_REDIRECT_URL=https://comunica.5-183-8-106.sslip.io/api/auth/discord/callback
-   DISCORD_GUILD_ID=
-   DISCORD_INVITE_URL=
-   DISCORD_MOD_ROLE_IDS=
-   EOF
-   chown root:deploy .env && chmod 640 .env && nano .env      # preencha as DISCORD_*
-   docker compose -f compose.prod.yaml up -d --build
-   ```
-
-3. No fim do `/opt/proxy/Caddyfile` (sem mexer nos outros blocos), depois de guardar uma cópia com `cp Caddyfile Caddyfile.antes-comunica`:
-
-   ```
-   # Comunica FAESA
-   comunica.5-183-8-106.sslip.io {
-   	encode gzip
-   	handle /api/* {
-   		reverse_proxy comunica-api:8090
-   	}
-   	handle {
-   		reverse_proxy comunica-web:3000
-   	}
-   }
-   ```
-
-   E recarregue: `cd /opt/proxy && docker compose exec caddy caddy reload -c /etc/caddy/Caddyfile`.
-
-### Deploy automático
-
-Todo push na `main` (menos os só de `docs/` e `.md`) roda o workflow `.github/workflows/deploy.yml`: testes da API e checagens do front e, se passarem, o deploy na VPS. O mesmo workflow roda as checagens em todo PR. Para refazer o deploy sem commit novo (ex.: depois de trocar o `.env`): aba **Actions** → **CI e deploy** → **Run workflow**, ou `gh workflow run deploy.yml`.
-
-O GitHub entra na VPS como o usuário `deploy`, nunca como root, com uma chave que só serve para isso: o `authorized_keys` força o comando, então quem tiver a chave não abre shell nem faz túnel, só atualiza `app/` e roda o `deploy.sh` do root. Os segredos ficam no environment `production` do GitHub, liberado só para a `main`:
-
-- `DEPLOY_SSH_KEY`: chave privada (gerada só para isso, nunca a de outro projeto)
-- `DEPLOY_KNOWN_HOSTS`: a linha `<host> ssh-ed25519 ...` da chave do servidor, para não aceitar um servidor falso
-- `DEPLOY_HOST`: endereço da VPS
-
-A chave na VPS (uma vez, como root):
-
-```sh
-install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
-echo 'restrict,command="cd /opt/comunica-faesa/app && git pull --ff-only -q && exec sh /opt/comunica-faesa/deploy.sh" <chave pública>' > /home/deploy/.ssh/authorized_keys
-chown deploy:deploy /home/deploy/.ssh/authorized_keys && chmod 600 /home/deploy/.ssh/authorized_keys
-```
-
-Se o deploy falhar, o job fica vermelho na aba Actions. Se foi no build, os containers antigos continuam no ar. Logs: `cd /opt/comunica-faesa && docker compose -f compose.prod.yaml logs --tail 50 comunica-api`.
-
-### Mudou o `compose.prod.yaml` ou o `deploy.sh`?
-
-O deploy automático não leva essas mudanças: depois do merge, ele já atualizou `app/`, mas a VPS continua usando as cópias do root. Revise o que mudou e copie à mão, como root:
-
-```sh
-cd /opt/comunica-faesa
-diff -u compose.prod.yaml app/compose.prod.yaml; diff -u deploy.sh app/deploy.sh   # leia antes de copiar
-install -o root -g root -m 644 app/compose.prod.yaml app/deploy.sh .
-```
-
-Depois, rode o deploy pelo **Run workflow**. Se o código do merge depende da mudança (ex.: uma variável nova no compose), o deploy automático do merge pode falhar até a cópia; o Run workflow resolve.
-
-O seed nunca roda na VPS: lá só entram dados reais, criados pelo próprio site.
+- Logs da API: painel do Render → **Logs**. Banco: **SQL Editor** do Neon.
+- Ligar a call do grupo: o passo 5 de "App do Discord", feito no app de produção, com `DISCORD_BOT_TOKEN` e `DISCORD_CALLS_CATEGORY_ID` nas variáveis do Render. Sem elas, a API sobe sem a call.
+- Mudou uma variável no Render: ele refaz o deploy ao salvar. Mudou na Vercel: **Deployments → Redeploy**, porque o `API_URL` só vale num build novo.
+- Login falhando com 429 nos logs da API: o Discord bloqueou o IP compartilhado do Render. O plano B é subir o mesmo `backend/Dockerfile` em outro host grátis (ex.: Koyeb) e trocar o `API_URL` na Vercel.
+- O seed nunca roda em produção: lá só entram dados reais, criados pelo próprio site.
 
 ## Estrutura
 
