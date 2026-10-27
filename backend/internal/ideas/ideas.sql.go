@@ -161,6 +161,37 @@ func (q *Queries) GetIdeaAuthor(ctx context.Context, id int64) (GetIdeaAuthorRow
 	return i, err
 }
 
+const getIdeaCall = `-- name: GetIdeaCall :one
+SELECT i.title, i.discord_role_id, i.discord_channel_id,
+       ARRAY(SELECT u.discord_id FROM users u
+             WHERE u.discord_id IS NOT NULL
+               AND (u.id = i.author_id OR u.id IN (SELECT n.user_id FROM interests n WHERE n.idea_id = i.id))
+             ORDER BY u.id)::text[] AS members
+FROM ideas i
+WHERE i.id = $1
+`
+
+type GetIdeaCallRow struct {
+	Title            string
+	DiscordRoleID    *string
+	DiscordChannelID *string
+	Members          []string
+}
+
+// A call do grupo no Discord (docs/contratos/fatia-19-call-no-discord.md). members são os discord_id de quem recebe o cargo:
+// o autor e a lista de interessados.
+func (q *Queries) GetIdeaCall(ctx context.Context, id int64) (GetIdeaCallRow, error) {
+	row := q.db.QueryRow(ctx, getIdeaCall, id)
+	var i GetIdeaCallRow
+	err := row.Scan(
+		&i.Title,
+		&i.DiscordRoleID,
+		&i.DiscordChannelID,
+		&i.Members,
+	)
+	return i, err
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, name, avatar_url, course, discord_id, skills FROM users WHERE id = $1
 `
@@ -496,6 +527,34 @@ type RemoveInterestParams struct {
 
 func (q *Queries) RemoveInterest(ctx context.Context, arg RemoveInterestParams) error {
 	_, err := q.db.Exec(ctx, removeInterest, arg.IdeaID, arg.UserID)
+	return err
+}
+
+const setIdeaChannel = `-- name: SetIdeaChannel :exec
+UPDATE ideas SET discord_channel_id = $2 WHERE id = $1
+`
+
+type SetIdeaChannelParams struct {
+	ID               int64
+	DiscordChannelID *string
+}
+
+func (q *Queries) SetIdeaChannel(ctx context.Context, arg SetIdeaChannelParams) error {
+	_, err := q.db.Exec(ctx, setIdeaChannel, arg.ID, arg.DiscordChannelID)
+	return err
+}
+
+const setIdeaRole = `-- name: SetIdeaRole :exec
+UPDATE ideas SET discord_role_id = $2 WHERE id = $1
+`
+
+type SetIdeaRoleParams struct {
+	ID            int64
+	DiscordRoleID *string
+}
+
+func (q *Queries) SetIdeaRole(ctx context.Context, arg SetIdeaRoleParams) error {
+	_, err := q.db.Exec(ctx, setIdeaRole, arg.ID, arg.DiscordRoleID)
 	return err
 }
 
