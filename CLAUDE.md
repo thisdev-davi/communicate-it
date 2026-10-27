@@ -17,7 +17,7 @@ Na dúvida sobre escopo, aplique a régua: "sem isso, a dor principal continua s
 - **backend/** — Go, API REST. Postgres via **sqlc + pgx** (SQL puro, sem ORM). Migrations com **goose**.
 - **frontend/** — Next.js (React).
 - **Auth** — Discord OAuth (`golang.org/x/oauth2`). Chat e conversa ficam no Discord, a plataforma não constrói chat.
-- **Deploy** — Docker na VPS, Caddy como proxy reverso por subdomínio.
+- **Deploy** — plano grátis: front na Vercel, API no Render (Docker), Postgres no Neon. Passo a passo no README, seção "Deploy".
 
 ## Estrutura do backend
 
@@ -64,7 +64,7 @@ Skills em uso no projeto:
 - **Ponytail** (DietrichGebert/ponytail) — ativo durante a implementação; `/ponytail-review` no diff antes do PR.
 - **find-skills** (vercel-labs/skills) — busca skills prontas no ecossistema skills.sh.
 
-Quando usar o find-skills: ao começar algo de domínio específico em que uma skill pronta pode trazer boas práticas (ex.: testes em Go, padrões do Next.js, OAuth, Docker/Caddy, Postgres), rode uma busca antes de improvisar — `npx skills find <termo>`.
+Quando usar o find-skills: ao começar algo de domínio específico em que uma skill pronta pode trazer boas práticas (ex.: testes em Go, padrões do Next.js, OAuth, Docker, Vercel/Render, Postgres), rode uma busca antes de improvisar — `npx skills find <termo>`.
 
 Regras para skills novas:
 
