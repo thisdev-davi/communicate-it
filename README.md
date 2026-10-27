@@ -111,6 +111,7 @@ Todo push na `main` (menos os só de `docs/` e `.md`) roda o workflow `.github/w
 ### No dia a dia
 
 - Logs da API: painel do Render → **Logs**. Banco: **SQL Editor** do Neon.
+- Ligar a call do grupo: o passo 5 de "App do Discord", feito no app de produção, com `DISCORD_BOT_TOKEN` e `DISCORD_CALLS_CATEGORY_ID` nas variáveis do Render. Sem elas, a API sobe sem a call.
 - Mudou uma variável no Render: ele refaz o deploy ao salvar. Mudou na Vercel: **Deployments → Redeploy**, porque o `API_URL` só vale num build novo.
 - Login falhando com 429 nos logs da API: o Discord bloqueou o IP compartilhado do Render. O plano B é subir o mesmo `backend/Dockerfile` em outro host grátis (ex.: Koyeb) e trocar o `API_URL` na Vercel.
 - O seed nunca roda em produção: lá só entram dados reais, criados pelo próprio site.
