@@ -172,7 +172,7 @@ Decidida em 17 de outubro de 2026 (item 6 das funcionalidades) e concluída em 1
 Fechado em 19 de outubro de 2026: as sete funcionalidades do MVP estão na `main` (fatias 1 a 18), menos comentários nas ideias, que foram para a fila.
 
 - Depois do fechamento, uma revisão do código virou correções sem funcionalidade nova: cookies `__Host-` e headers de segurança (PR #37), "quero participar" e "vou participar" sem condição de corrida e curso obrigatório também na API (PR #38), e um refactor que apaga consultas repetidas. A habilidade "Maratona de Programação" entrou no catálogo (PR #39).
-- Pendência em produção: preencher `DISCORD_MOD_ROLE_IDS` no `.env` da VPS ([fase de eventos](#fase-de-eventos)). Sem isso, ninguém é moderador.
+- Pendência em produção: preencher `DISCORD_MOD_ROLE_IDS` nas variáveis do Render (README, "Deploy"). Sem isso, ninguém é moderador.
 - Nada novo entra no MVP. A próxima fase sai da fila do [IDEIA](IDEIA.md), começa pelo `grill-me` e passa pela régua de decisão.
 
 ## Regras de negócio e fora de escopo
