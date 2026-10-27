@@ -67,11 +67,11 @@ func run() error {
 	}
 
 	a := auth.NewHandler(pool, clientID, clientSecret, redirectURL, guildID, modRoles)
-	ih := ideas.NewHandler(pool, a.UserID)
+	ih := ideas.NewHandler(pool, a.Viewer)
 	ih.Bot = bot
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           routes(a, ih, events.NewHandler(pool, a.UserID)),
+		Handler:           routes(a, ih, events.NewHandler(pool, a.Viewer)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second, // corpo inteiro; sem isso um cliente lento segura a conexão para sempre
 		IdleTimeout:       60 * time.Second, // keep-alive parado
