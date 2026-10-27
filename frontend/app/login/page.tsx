@@ -19,26 +19,35 @@ async function LoginBox({ searchParams }: Pick<PageProps<"/login">, "searchParam
   const { erro } = await searchParams;
   const message = typeof erro === "string" && Object.hasOwn(errors, erro) ? errors[erro] : null;
   const invite = process.env.DISCORD_INVITE_URL;
+  // reload: a API responde com redirect para o Discord, precisa ser navegação completa.
+  const button = (
+    <ButtonLink href="/api/auth/discord" reload icon="discord" className={styles.wide}>
+      Entrar com Discord
+    </ButtonLink>
+  );
   return (
     <>
       {message && (
         <Notice>
           {message}
-          {erro === "fora_do_servidor" && invite && (
-            <>
-              {" "}
-              <a href={invite} target="_blank" rel="noopener noreferrer">
-                Entre no servidor da comunidade<span className="sr-only"> (abre em nova aba)</span>
-              </a>{" "}
-              e depois tente de novo.
-            </>
-          )}
+          {erro === "fora_do_servidor" && invite && " Entre pelo passo 1 e depois tente de novo."}
         </Notice>
       )}
-      {/* reload: a API responde com redirect para o Discord, precisa ser navegação completa. */}
-      <ButtonLink href="/api/auth/discord" reload icon="discord" className={styles.wide}>
-        Entrar com Discord
-      </ButtonLink>
+      {/* O login só aceita quem já está no servidor: o convite vem antes do botão, não só depois de falhar. */}
+      {invite ? (
+        <ol className={styles.steps}>
+          <li>
+            Entre no{" "}
+            <a href={invite} target="_blank" rel="noopener noreferrer" className={styles.invite}>
+              servidor da comunidade<span className="sr-only"> (abre em nova aba)</span>
+            </a>
+            , se ainda não estiver nele.
+          </li>
+          <li>{button}</li>
+        </ol>
+      ) : (
+        button
+      )}
     </>
   );
 }
