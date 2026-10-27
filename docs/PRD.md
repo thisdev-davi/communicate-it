@@ -49,7 +49,7 @@ Tabelas principais do MVP:
 
 - **users:** o aluno. id, discord_id, nome, foto, curso, habilidades, se é moderador.
 - **sessions:** a sessão de login. Hash do token, usuário e validade (30 dias).
-- **ideas:** a ideia postada. id, autor (users), título, descrição, curso, categoria, número de vagas, habilidades procuradas, status (aberta, em andamento, concluída), data de conclusão.
+- **ideas:** a ideia postada. id, autor (users), título, descrição, curso, categoria, número de vagas, habilidades procuradas, status (aberta, em andamento, concluída), data de conclusão, e os ids do cargo e do canal da call do grupo no Discord ([fase do Discord](#fase-do-discord)).
 - **interests:** quem clicou em "quero participar". Liga um user a uma idea.
 - **Habilidades:** catálogo fixo no código (front-end, back-end, design, dados…), como curso e categoria. Cada aluno guarda as suas numa coluna `skills` (array), e cada ideia guarda as procuradas do mesmo jeito ([fatia 12](contratos/fatia-12-habilidades-da-ideia.md)). Sem tabela de catálogo nem tabelas de junção: a lista é curta e muda pouco ([fatia 11](contratos/fatia-11-habilidades.md)).
 - **events:** o evento. id, autor (users), título, descrição, data e hora de início, local. Presença confirmada também vira uma ligação entre user e event ([fase de eventos](#fase-de-eventos)).
@@ -150,7 +150,7 @@ Decidida em 16 de outubro de 2026. Quatro fatias, nesta ordem, cada uma com o pr
 - O moderador edita e apaga qualquer evento e apaga qualquer ideia (não edita ideia alheia nem troca o status dela).
 - O front mostra os botões pelo `is_moderator` do `/api/me`; quem decide de verdade é a API.
 
-**Fica para depois:** seção de eventos passados, limite de vagas, eventos no perfil, próximo evento em destaque no mural, segundo nível de cargo (Admin com poder próprio).
+**Fica para depois:** seção de eventos passados, limite de vagas, eventos no perfil, próximo evento em destaque no mural, segundo nível de cargo (Admin com poder próprio). Estão na fila do [IDEIA](IDEIA.md).
 
 ## Fase de descoberta
 
@@ -165,7 +165,30 @@ Decidida em 17 de outubro de 2026 (item 6 das funcionalidades) e concluída em 1
 - O visitante não filtra nem busca: a API ignora os filtros e o `q` dele, para a prévia continuar sendo de 3.
 - Limite conhecido: o mural devolve todas as ideias, sem paginação. Entra quando passar de umas centenas.
 
-**Fica para depois:** filtros e busca na vitrine (a API já aceita), mais de um valor por filtro, atalho "combinam com minhas habilidades".
+**Fica para depois:** filtros e busca na vitrine (a API já aceita), mais de um valor por filtro, atalho "combinam com minhas habilidades", paginação do mural. Estão na fila do [IDEIA](IDEIA.md).
+
+## MVP concluído
+
+Fechado em 19 de outubro de 2026: as sete funcionalidades do MVP estão na `main` (fatias 1 a 18), menos comentários nas ideias, que foram para a fila.
+
+- Depois do fechamento, uma revisão do código virou correções sem funcionalidade nova: cookies `__Host-` e headers de segurança (PR #37), "quero participar" e "vou participar" sem condição de corrida e curso obrigatório também na API (PR #38), e um refactor que apaga consultas repetidas. A habilidade "Maratona de Programação" entrou no catálogo (PR #39).
+- Pendência em produção: preencher `DISCORD_MOD_ROLE_IDS` no `.env` da VPS ([fase de eventos](#fase-de-eventos)). Sem isso, ninguém é moderador.
+- Nada novo entra no MVP. A próxima fase sai da fila do [IDEIA](IDEIA.md), começa pelo `grill-me` e passa pela régua de decisão.
+
+## Fase do Discord
+
+Decidida em 21 de outubro de 2026, com o MVP completo. Saiu do "Futuro" da [IDEIA](IDEIA.md): o aluno acha o time na plataforma, mas o grupo ainda precisa de um lugar no Discord para conversar, e hoje cada autor cria esse lugar na mão (ou o grupo não se encontra).
+
+| fatia | conteúdo | situação |
+|---|---|---|
+| 19 — call do grupo no Discord | ideia que vai para Em andamento ganha um canal de voz privado e um cargo com o nome dela; o autor e a lista recebem o cargo e o link na página da ideia | feita ([contrato](contratos/fatia-19-call-no-discord.md)) |
+
+- O bot é a própria API Go chamando a REST do Discord com um token de bot. Ela não escuta o Discord, então não precisa de processo nem de container novo.
+- O status não depende do Discord: se ele falhar, o status muda mesmo assim e o próximo Em andamento completa o que faltou.
+- Sem `DISCORD_BOT_TOKEN`, a API sobe sem a call, como sem `DISCORD_MOD_ROLE_IDS` sobe sem moderação.
+- Limite conhecido: o servidor aceita até 250 cargos, e só apagar a ideia libera um.
+
+**Fica para depois:** limpar cargo e canal de concluídas antigas, renomear quando a ideia é editada, tirar o cargo de quem desiste, avisar o autor quando o Discord falha.
 
 ## Regras de negócio e fora de escopo
 
@@ -176,12 +199,12 @@ Decidida em 17 de outubro de 2026 (item 6 das funcionalidades) e concluída em 1
 - Apenas o autor da ideia muda o status dela e trava novos interessados.
 - A coordenação real dos grupos acontece no Discord, não na plataforma.
 - Moderação: quem tem o cargo Admin ou Moderação no servidor do Discord apaga qualquer ideia e edita ou apaga qualquer evento ([fase de eventos](#fase-de-eventos)).
+- Quando o autor passa a ideia para Em andamento, o grupo (autor e lista) ganha uma call privada no Discord ([fase do Discord](#fase-do-discord)).
 
 **Fora de escopo no MVP (vai para fases futuras)**
 
 - Chat e troca de ideia livre (fica no Discord).
 - Aba de professor com avaliação acadêmica.
-- Bot do Discord criando call automática quando o grupo fecha.
 - Build in public (acompanhamento diário), seguir pessoas e feed.
 - "Tô disponível" para aluno sem ideia.
 - Link de repositório na vitrine, hackathons e desafios internos.
