@@ -107,7 +107,7 @@ Todo objeto de ideia (`GET /api/ideas`, `GET /api/ideas/{id}`, `GET /api/me/idea
 - Card e página mostram "Precisa de N pessoas · M interessados" numa linha e "postada em DD/MM" na de baixo.
 - Página da ideia, para quem é interessado: "Você está na lista. O autor vai te chamar no Discord."
 - Página da ideia, para o autor: seção "Interessados (N)", com foto, nome e o link "Chamar no Discord" de cada pessoa. Sem interessados: "Ninguém se interessou ainda."
-- "Chamar no Discord" abre `https://discord.com/users/<discord_id>` numa nova aba e, no mesmo clique, copia a mensagem `Oi, <primeiro nome>! Vi que você quer participar da ideia “<título>” no Comunica FAESA. Bora conversar?`, com o aviso "Mensagem copiada, cole na conversa." O Discord não tem link que abra uma conversa já escrita; o perfil é o mais perto disso. Se a cópia falhar, o perfil abre do mesmo jeito.
+- "Chamar no Discord" abre `https://discord.com/users/<discord_id>` numa nova aba e, no mesmo clique, copia a mensagem `Oi, <primeiro nome>! Vi que você quer participar da ideia “<título>” no Communicate It. Bora conversar?`, com o aviso "Mensagem copiada, cole na conversa." O Discord não tem link que abra uma conversa já escrita; o perfil é o mais perto disso. Se a cópia falhar, o perfil abre do mesmo jeito.
 
 ## Pronto quando
 

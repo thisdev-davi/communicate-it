@@ -54,7 +54,7 @@ Erros:
 ## Front
 
 - `/alunos/[id]`: visitante vai para `/login`; logado sem curso vai para `/cadastro`. Perfil inexistente ou id inválido: "Aluno não encontrado", com o link para o mural.
-- Começa com "Voltar ao mural". O topo é um card com a foto grande, o nome (`h1`) e o curso por extenso; sem curso, a linha some. À direita, "Chamar no Discord", que abre o perfil no Discord e copia `Oi, <primeiro nome>! Te achei no Comunica FAESA. Bora conversar?`. O botão não aparece no próprio perfil nem sem `discord_id`.
+- Começa com "Voltar ao mural". O topo é um card com a foto grande, o nome (`h1`) e o curso por extenso; sem curso, a linha some. À direita, "Chamar no Discord", que abre o perfil no Discord e copia `Oi, <primeiro nome>! Te achei no Communicate It. Bora conversar?`. O botão não aparece no próprio perfil nem sem `discord_id`.
 - Duas seções empilhadas, na grade de cards do mural:
   - "Ideias postadas (N)". Vazio: "Ainda não postou ideias." No próprio perfil: "Você ainda não postou ideias." com o link "Postar ideia".
   - "Participa de (N)". Vazio: "Ainda não participa de nenhuma ideia." No próprio perfil: "Você ainda não participa de nenhuma ideia." com o link para o mural.

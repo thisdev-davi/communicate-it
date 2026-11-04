@@ -1,10 +1,10 @@
-# Design do front — Comunica FAESA
+# Design do front — Communicate It
 
 Regras de interface do front: visual, padrões de tela, texto e acessibilidade. **É a fonte da verdade** para qualquer tela, componente ou texto novo. Na dúvida entre este arquivo e outra referência, vale este arquivo.
 
 - **Valores** (cores, espaçamentos, raios, sombra, fonte) moram em `frontend/app/globals.css`, como variáveis CSS com os nomes dos tokens. Este documento cita os tokens pelo nome e não repete os valores.
 - **Referência visual:** o artefato "Comunica FAESA" (design system no claude.ai, privado do Davi) tem os previews dos componentes e as Telas. Ele inspira, mas não manda. O que diverge dele está no fim deste arquivo.
-- **Marca** (nome, símbolo, logo da FAESA) fica no artefato. Aqui, só o que afeta o código: o nome é sempre "Comunica FAESA", e o logo vem do componente `Logo`.
+- **Marca** (nome, símbolo, logo da FAESA) fica no artefato. Aqui, só o que afeta o código: o nome é sempre "Communicate It", e o logo vem do componente `Logo`.
 
 ## Visual
 
@@ -158,7 +158,7 @@ Regras de interface do front: visual, padrões de tela, texto e acessibilidade. 
   - "Apagar ideia" confirma na caixa nativa do navegador (`confirm()`), que já é acessível, e depois volta ao mural;
   - ideia inexistente mostra "Ideia não encontrada".
 - **Perfil (`/alunos/<id>`):** só para quem está logado e tem curso.
-  - "Voltar ao mural" e um card com a foto `lg`, o nome (`h1`), o curso por extenso (some sem curso), as habilidades e, à direita, "Chamar no Discord" com a mensagem "Te achei no Comunica FAESA". No próprio perfil, o botão é "Editar perfil" (`secondary`), e sem habilidades aparece "Você ainda não adicionou habilidades.";
+  - "Voltar ao mural" e um card com a foto `lg`, o nome (`h1`), o curso por extenso (some sem curso), as habilidades e, à direita, "Chamar no Discord" com a mensagem "Te achei no Communicate It". No próprio perfil, o botão é "Editar perfil" (`secondary`), e sem habilidades aparece "Você ainda não adicionou habilidades.";
   - as seções "Ideias postadas (N)" e "Participa de (N)", empilhadas, na grade do mural;
   - vazio é uma frase sob o título da seção ("Ainda não postou ideias."). No próprio perfil, fala com "você" e traz o link para agir ("Postar ideia", "Ver o mural");
   - perfil inexistente mostra "Aluno não encontrado".
