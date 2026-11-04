@@ -12,8 +12,8 @@ export function CallOnDiscord({ discordId, name, ideaTitle }: { discordId: strin
   const [copied, setCopied] = useState(false);
   const firstName = name.trim().split(/\s+/)[0];
   const message = ideaTitle
-    ? `Oi, ${firstName}! Vi que você quer participar da ideia “${ideaTitle}” no Comunica FAESA. Bora conversar?`
-    : `Oi, ${firstName}! Te achei no Comunica FAESA. Bora conversar?`;
+    ? `Oi, ${firstName}! Vi que você quer participar da ideia “${ideaTitle}” no Communicate It. Bora conversar?`
+    : `Oi, ${firstName}! Te achei no Communicate It. Bora conversar?`;
 
   return (
     <div className={styles.call}>

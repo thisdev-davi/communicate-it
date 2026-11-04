@@ -14,7 +14,7 @@ import { UserMenu } from "./user-menu";
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
 
 export const metadata: Metadata = {
-  title: "Comunica FAESA",
+  title: "Communicate It",
   description: "Mural de ideias para alunos de TI da FAESA",
 };
 
